@@ -1,3 +1,10 @@
+# Mac OS X files
+.DS_Store
+*.webloc
+*.csv
+*.py
+*.pdf
+
 ## Core latex/pdflatex auxiliary files:
 *.aux
 *.lof
