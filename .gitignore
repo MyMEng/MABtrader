@@ -3,6 +3,9 @@
 *.webloc
 *.csv
 *.py
+*.pyc
+*.ipynb
+code/.ipynb_checkpoints/*
 *.pdf
 
 ## Core latex/pdflatex auxiliary files:
