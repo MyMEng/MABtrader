@@ -1,59 +1,64 @@
-from BSE import Trader
-from BSE import Order
+from BSE import Trader, Order
+from BSE import Trader_Giveaway, Trader_ZIC, Trader_Shaver, Trader_Sniper, Trader_ZIP
 import random
 
 class Trader_MAB( Trader ):
+
+  def __init__(self, ttype, tid, balance):
+    # Predefine initial parameters
+    self.earn = 0
+    self.uncertainty = 10
+    # ############################
+
+    self.ttype = ttype
+    self.tid = tid
+    self.balance = balance
+    self.blotter = []
+    self.orders = []
+    self.willing = 1        #?
+    self.able = 1           #?
+    self.lastquote = None   #?
+
+    # predefined for this system: GVWY, ZIC, SHVR, SNPR, ZIP, MAB
+    ## Initialise all available traders: GVWY, ZIC, SHVR, SNPR, ZIP, MAB
+    self.traders = [ 'GVWY', 'ZIC', 'SHVR', 'SNPR', 'ZIP' ]
+    self.MAB_GVWY = Trader_Giveaway('GVWY', 'MAB_GVWY', 0.00)
+    self.MAB_ZIC = Trader_ZIC('ZIC', 'MAB_ZIC', 0.00)
+    self.MAB_SHVR = Trader_Shaver('SHVR', 'MAB_SHVR', 0.00)
+    self.MAB_SNPR = Trader_Sniper('SNPR', 'MAB_SNPR', 0.00)
+    self.MAB_ZIP = Trader_ZIP('ZIP', 'MAB_ZIP', 0.00)
+    ## Get all available traders count
+    self.tradersNo = len(self.traders)
+
+    # Initialise 'trade-ness' parameters
+    self.mean = self.tradersNo * [self.earn]
+    self.var = self.tradersNo * [self.uncertainty]
+
+  # Get order, calculate trading price, and schedule
   def getorder( self, time, countdown, lob ):
     if len( self.orders ) < 1:
       order = None
+
     else:
-      quoteprice = self.orders[0].price
-      self.lastquote = quoteprice
-      order=Order(self.tid,
-        self.orders[0].otype,
-        quoteprice,
-        self.orders[0].qty,
-        time)
+      # Get order details
+      price = self.orders[0].price
+      orderType = self.orders[0].otype
+      quantity = self.orders[0].qty
+
+      # Do the magic...
+
+      order = Order( self.tid, orderType, price, quantity, time )
+
     return order
 
-# # Trader subclass ZIP
-# # After Cliff 1997
-# class Trader_MAB(Trader):
-
-#         # ZIP init key param-values are those used in Cliff's 1997 original HP Labs tech report
-#         # NB this implementation keeps separate margin values for buying & sellling,
-#         #    so a single trader can both buy AND sell
-#         #    -- in the original, traders were either buyers OR sellers
-
-#         def __init__(self, ttype, tid, balance):
-#                 self.ttype = ttype
-#                 self.tid = tid
-#                 self.balance = balance
-#                 self.blotter = []
-#                 self.orders = []
-#                 self.job = None # this gets switched to 'Bid' or 'Ask' depending on order-type
-#                 self.active = False # gets switched to True while actively working an order
-#                 self.prev_change = 0 # this was called last_d in Cliff'97
-#                 self.beta = 0.1 + 0.4*random.random()
-#                 self.momntm = 0.1*random.random()
-#                 self.ca = 0.05 # self.ca & .cr were hard-coded in '97 but parameterised later
-#                 self.cr = 0.05
-#                 self.margin = None # this was called profit in Cliff'97
-#                 self.margin_buy = -1.0*(0.05 + 0.3*random.random())
-#                 self.margin_sell = 0.05 + 0.3*random.random()
-#                 self.price = None
-#                 self.limit = None
-#                 # memory of best price & quantity of best bid and ask, on LOB on previous update
-#                 self.prev_best_bid_p = None
-#                 self.prev_best_bid_q = None
-#                 self.prev_best_ask_p = None
-#                 self.prev_best_ask_q = None
+  # Update trader's statistics based on current market situation
+  def respond(self, time, lob, trade, verbose):
+    True
 
 
-#         def getorder(self, time, countdown, lob):
-#                 if len(self.orders) < 1:
-#                         self.active = False
-#                         order = None
+
+
+
 #                 else:
 #                         self.active = True
 #                         self.limit = self.orders[0].price
@@ -73,7 +78,7 @@ class Trader_MAB( Trader ):
 
 
 #         # update margin on basis of what happened in market
-#         def respond(self, time, lob, trade, verbose):
+#         def respond( lob, trade):
 #                 # ZIP trader responds to market events, altering its margin
 #                 # does this whether it currently has an order to work or not
 
