@@ -1,6 +1,7 @@
 from BSE import Trader, Order
 from BSE import Trader_Giveaway, Trader_ZIC, Trader_Shaver, Trader_Sniper, Trader_ZIP
 import random
+import pdb
 
 class Trader_MAB( Trader ):
 
@@ -36,6 +37,13 @@ class Trader_MAB( Trader ):
 
   # Get order, calculate trading price, and schedule
   def getorder( self, time, countdown, lob ):
+    # Propagate my order to sub-traders #? is it correct???????????
+    self.MAB_GVWY.add_order(self.orders[0])
+    self.MAB_ZIC.add_order(self.orders[0])
+    self.MAB_SHVR.add_order(self.orders[0])
+    self.MAB_SNPR.add_order(self.orders[0])
+    self.MAB_ZIP.add_order(self.orders[0])
+
     if len( self.orders ) < 1:
       order = None
 
@@ -45,7 +53,14 @@ class Trader_MAB( Trader ):
       orderType = self.orders[0].otype
       quantity = self.orders[0].qty
 
-      # Do the magic...
+      # Do the magic
+      ## Simulate all available traders
+      MAB_GVWY_order = self.MAB_GVWY.getorder( time, countdown, lob )
+      MAB_ZIC_order = self.MAB_ZIC.getorder( time, countdown, lob )
+      MAB_SHVR_order = self.MAB_SHVR.getorder( time, countdown, lob )
+      MAB_SNPR_order = self.MAB_SNPR.getorder( time, countdown, lob )
+      MAB_ZIP_order = self.MAB_ZIP.getorder( time, countdown, lob )
+      ## Analyse and produce the response...
 
       order = Order( self.tid, orderType, price, quantity, time )
 
@@ -53,7 +68,19 @@ class Trader_MAB( Trader ):
 
   # Update trader's statistics based on current market situation
   def respond(self, time, lob, trade, verbose):
-    True
+
+    #? Update traders bookkeeping ????????? - to make it easier use my own bookkeeping:
+    ## it should be the same for all traders
+    self.MAB_GVWY.bookkeep(trade, order, bookkeep_verbose)
+    self.MAB_ZIC.bookkeep(trade, order, bookkeep_verbose)
+    self.MAB_SHVR.bookkeep(trade, order, bookkeep_verbose)
+    self.MAB_SNPR.bookkeep(trade, order, bookkeep_verbose)
+    self.MAB_ZIP.bookkeep(trade, order, bookkeep_verbose)
+    ########################################
+    traders[trade['party1']].bookkeep(trade, order, bookkeep_verbose)
+    traders[trade['party2']].bookkeep(trade, order, bookkeep_verbose)
+    print "Time: ", time, " lob: ", lob
+    #pdb.set_trace()
 
 
 
