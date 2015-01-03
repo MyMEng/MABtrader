@@ -37,33 +37,37 @@ class Trader_MAB( Trader ):
 
   # Get order, calculate trading price, and schedule
   def getorder( self, time, countdown, lob ):
-    # Propagate my order to sub-traders #? is it correct???????????
-    self.MAB_GVWY.add_order(self.orders[0])
-    self.MAB_ZIC.add_order(self.orders[0])
-    self.MAB_SHVR.add_order(self.orders[0])
-    self.MAB_SNPR.add_order(self.orders[0])
-    self.MAB_ZIP.add_order(self.orders[0])
 
+    # Propagate my order to sub-traders #? is it correct???????????
+    def propagateOrder( OtP ):
+      self.MAB_GVWY.add_order(OtP)
+      self.MAB_ZIC.add_order(OtP)
+      self.MAB_SHVR.add_order(OtP)
+      self.MAB_SNPR.add_order(OtP)
+      self.MAB_ZIP.add_order(OtP)
+    # Simulate all available traders
+    def simulateTraders( TCL ):
+      return (self.MAB_GVWY.getorder( *TCL )
+        self.MAB_ZIC.getorder( *TCL )
+        self.MAB_SHVR.getorder( *TCL )
+        self.MAB_SNPR.getorder( *TCL )
+        self.MAB_ZIP.getorder( *TCL ))
+
+
+    propagateOrder( self.orders[0] )
     if len( self.orders ) < 1:
       order = None
-
     else:
       # Get order details
       price = self.orders[0].price
       orderType = self.orders[0].otype
       quantity = self.orders[0].qty
-
       # Do the magic
       ## Simulate all available traders
-      MAB_GVWY_order = self.MAB_GVWY.getorder( time, countdown, lob )
-      MAB_ZIC_order = self.MAB_ZIC.getorder( time, countdown, lob )
-      MAB_SHVR_order = self.MAB_SHVR.getorder( time, countdown, lob )
-      MAB_SNPR_order = self.MAB_SNPR.getorder( time, countdown, lob )
-      MAB_ZIP_order = self.MAB_ZIP.getorder( time, countdown, lob )
-      ## Analyse and produce the response...
-
+      (GVWYo,ZICo,SHVRo,SNPRo,ZIPo) = simulateTraders((time, countdown, lob))
+      ## Analyse and produce the response
+      #...
       order = Order( self.tid, orderType, price, quantity, time )
-
     return order
 
   # Update trader's statistics based on current market situation
