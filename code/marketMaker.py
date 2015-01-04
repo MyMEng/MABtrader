@@ -2,6 +2,7 @@ from BSE import Trader, Order
 from BSE import Trader_Giveaway, Trader_ZIC, Trader_Shaver, Trader_Sniper, Trader_ZIP
 from numpy.random import normal #from random import gauss
 from numpy import argmax
+from random import choice
 # import pdb
 
 class Trader_MAB( Trader ):
@@ -24,12 +25,6 @@ class Trader_MAB( Trader ):
 
     # predefined for this system: GVWY, ZIC, SHVR, SNPR, ZIP, MAB
     ## Initialise all available traders: GVWY, ZIC, SHVR, SNPR, ZIP, MAB
-    # self.traders = [ 'GVWY', 'ZIC', 'SHVR', 'SNPR', 'ZIP' ]
-    # self.MAB_GVWY = Trader_Giveaway('GVWY', tid, balance)
-    # self.MAB_ZIC = Trader_ZIC('ZIC', tid, balance)
-    # self.MAB_SHVR = Trader_Shaver('SHVR', tid, balance)
-    # self.MAB_SNPR = Trader_Sniper('SNPR', tid, balance)
-    # self.MAB_ZIP = Trader_ZIP('ZIP', tid, balance)
     self.keys = [ 'GVWY', 'ZIC', 'SHVR', 'SNPR', 'ZIP' ]
     self.traders = { 'GVWY' : Trader_Giveaway('GVWY', tid, balance),
       'ZIC' : Trader_ZIC('ZIC', tid, balance),
@@ -43,72 +38,47 @@ class Trader_MAB( Trader ):
     # Initialise 'trade-ness' parameters
     self.mu = dict( zip(keys, self.tradersNo * [self.earn]) )
     self.sigma = dict( zip(keys, self.tradersNo * [self.uncertainty]) )
-    # self.mu = self.tradersNo * [self.earn]
-    # self.sigma = self.tradersNo * [self.uncertainty]
 
 
-    def add_order(self, order):
-      # in this version, trader has at most one order,
-      # if allow more than one, this needs to be self.orders.append(order)
-      self.orders=[order]
-      # Remember about sub-traders
-      for traderID in self.traders:
-        self.traders[traderID].add_order(order)
-      # self.MAB_GVWY.add_order(order)
-      # self.MAB_ZIC.add_order(order)
-      # self.MAB_SHVR.add_order(order)
-      # self.MAB_SNPR.add_order(order)
-      # self.MAB_ZIP.add_order(order)
+  def add_order(self, order):
+    # in this version, trader has at most one order,
+    # if allow more than one, this needs to be self.orders.append(order)
+    self.orders=[order]
+    # Remember about sub-traders
+    for traderID in self.traders:
+      self.traders[traderID].add_order(order)
 
 
-    def del_order(self, order):
-      # this is lazy: assumes each trader has only one order with quantity=1, so deleting sole order
-      # CHANGE TO DELETE THE HEAD OF THE LIST AND KEEP THE TAIL
-      self.orders = []
-      # Remember about sub-traders
-      for traderID in self.traders:
-        self.traders[traderID].del_order(order)
-      # self.MAB_GVWY.del_order(order)
-      # self.MAB_ZIC.del_order(order)
-      # self.MAB_SHVR.del_order(order)
-      # self.MAB_SNPR.del_order(order)
-      # self.MAB_ZIP.del_order(order)
+  def del_order(self, order):
+    # this is lazy: assumes each trader has only one order with quantity=1, so deleting sole order
+    # CHANGE TO DELETE THE HEAD OF THE LIST AND KEEP THE TAIL
+    self.orders = []
+    # Remember about sub-traders
+    for traderID in self.traders:
+      self.traders[traderID].del_order(order)
 
-    def bookkeep(self, trade, order, verbose):
-      outstr='%s (%s) bookkeeping: orders=' % (self.tid, self.ttype)
-      for order in self.orders: outstr = outstr + str(order)
 
-      self.blotter.append(trade) # add trade record to trader's blotter
-      # NB What follows is **LAZY** -- assumes all orders are quantity=1
-      transactionprice = trade['price']
-      if self.orders[0].otype == 'Bid':
-        profit = self.orders[0].price-transactionprice
-      else:
-        profit = transactionprice-self.orders[0].price
-      self.balance += profit
-      if verbose: print('%s profit=%d balance=%d ' % (outstr, profit, self.balance))
-      self.del_order(order) # delete the order
-      # Remember about sub-traders
-      for traderID in self.traders:
-        self.traders[traderID].bookkeep(trade, order, verbose)
-      # self.MAB_GVWY.bookkeep(trade, order, verbose)
-      # self.MAB_ZIC.bookkeep(trade, order, verbose)
-      # self.MAB_SHVR.bookkeep(trade, order, verbose)
-      # self.MAB_SNPR.bookkeep(trade, order, verbose)
-      # self.MAB_ZIP.bookkeep(trade, order, verbose)
+  def bookkeep(self, trade, order, verbose):
+    outstr='%s (%s) bookkeeping: orders=' % (self.tid, self.ttype)
+    for order in self.orders: outstr = outstr + str(order)
+
+    self.blotter.append(trade) # add trade record to trader's blotter
+    # NB What follows is **LAZY** -- assumes all orders are quantity=1
+    transactionprice = trade['price']
+    if self.orders[0].otype == 'Bid':
+      profit = self.orders[0].price-transactionprice
+    else:
+      profit = transactionprice-self.orders[0].price
+    self.balance += profit
+    if verbose: print('%s profit=%d balance=%d ' % (outstr, profit, self.balance))
+    self.del_order(order) # delete the order
+    # Remember about sub-traders
+    for traderID in self.traders:
+      self.traders[traderID].bookkeep(trade, order, verbose)
 
 
   # Get order, calculate trading price, and schedule
   def getorder( self, time, countdown, lob ):
-
-    # Get order from selected trader
-    def simulateTraders( TCL, traderID ):
-      return self.traders[traderID].getorder( *TCL )
-      # self.MAB_GVWY.getorder( *TCL )
-      # self.MAB_ZIC.getorder( *TCL )
-      # self.MAB_SHVR.getorder( *TCL )
-      # self.MAB_SNPR.getorder( *TCL )
-      # self.MAB_ZIP.getorder( *TCL )
 
     if len( self.orders ) < 1:
       order = None
@@ -117,17 +87,14 @@ class Trader_MAB( Trader ):
       action = normal(self.mu.values(), self.sigma.values())
       ## Choose algorithm
       choice = argmax(action)
+      ## Check for double occurrences #? check whether after initialisation it is randomised and not always 0
+      if action.count(action[choice]) != 1 :
+        indices = [i for i, x in enumerate(action) if x == action[choice]]
+        choice = choice(indices)
       ## Identify trader associated with choice
       traderID = self.keys[choice]
-      ## Simulate chosen trader
-      order = simulateTrader((time, countdown, lob), traderID)
-
-      ## Get order details
-      # price = self.orders[0].price
-      # orderType = self.orders[0].otype
-      # quantity = self.orders[0].qty
-      # (GVWYo,ZICo,SHVRo,SNPRo,ZIPo) = simulateTrader((time, countdown, lob), traderID)
-      # order = Order( self.tid, orderType, price, quantity, time )
+      ## Simulate chosen trader and get order from it
+      order = self.traders[traderID].getorder( time, countdown, lob )
 
     return order
 
@@ -135,28 +102,21 @@ class Trader_MAB( Trader ):
   # Update trader's statistics based on current market situation
   def respond(self, time, lob, trade, verbose):
 
+    # Remember about sub-traders
+      for traderID in self.traders:
+        self.traders[traderID].respond(time, lob, trade, verbose)
+
+    ## Get order details
+    # price = self.orders[0].price
+    # orderType = self.orders[0].otype
+    # quantity = self.orders[0].qty
+    # (GVWYo,ZICo,SHVRo,SNPRo,ZIPo) = simulateTrader((time, countdown, lob), traderID)
+    # order = Order( self.tid, orderType, price, quantity, time )
+
     ## Analyse and produce the response
-    #...
-    print "Time: ", time, " lob: ", lob
+    ## Update posterior based on prior - decide on reward and uncertainty
+    #print "Time: ", time, " lob: ", lob
     #pdb.set_trace()
-
-
-#                 else:
-#                         self.active = True
-#                         self.limit = self.orders[0].price
-#                         self.job = self.orders[0].otype
-#                         if self.job == 'Bid':
-#                                 # currently a buyer (working a bid order)
-#                                 self.margin = self.margin_buy
-#                         else:
-#                                 # currently a seller (working a sell order)
-#                                 self.margin = self.margin_sell
-#                         quoteprice = int(self.limit * (1 + self.margin))
-#                         self.price = quoteprice
-
-#                         order=Order(self.tid, self.job, quoteprice, self.orders[0].qty, time)
-
-#                 return order
 
 
 #         # update margin on basis of what happened in market
