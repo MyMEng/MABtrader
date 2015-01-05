@@ -16,7 +16,7 @@ class Trader_MAB( Trader ):
     # Predefine initial parameters
     # self.earn = 0
     # self.uncertainty = 0.1
-    self.norm = float(1000 - 999) # based on max and min price on market
+    self.norm = float(1000 - 1) # based on max and min price on market
     self.payout = None # payout for current trade
     self.createStats = True
     self.singleStats = True
@@ -114,14 +114,16 @@ class Trader_MAB( Trader ):
     for traderID in self.traders:
         self.traders[traderID].bookkeep(trade, order, verbose)
     # Append reward to wining sub-trader
-    self.payout = reward # self.reward[self.currentTraderID].append(profit)
+    self.payout = profit # self.reward[self.currentTraderID].append(profit)
+    if profit < 0:
+      print "LOL ", profit," ", self.currentTraderID
 
 
   # Get order, calculate trading price, and schedule
   def getorder( self, time, countdown, lob ):
 
     # Choose sub-algorithm
-    def choice(toTry):
+    def selfChoice(toTry):
       # If any option has not been used so far use it # Identify trader associated with choice
       val = [self.tStats[x] for x in toTry]
       zeroes = val.count(0)
@@ -166,7 +168,7 @@ class Trader_MAB( Trader ):
 
       while( len(notTried) > 0 ):
         # Select sub-algorithm
-        choice(notTried)
+        selfChoice(notTried)
 
         # Record attempt
         notTried.remove(self.currentTraderID)
