@@ -6,6 +6,8 @@ from random import choice
 
 from numpy import argmax
 from time import time
+from os.path import isfile
+from math import sqrt, log
 
 class Trader_MAB( Trader ):
 
@@ -13,8 +15,11 @@ class Trader_MAB( Trader ):
   def __init__(self, ttype, tid, balance):
     # Predefine initial parameters
     self.earn = 0
-    self.uncertainty = 10
+    self.uncertainty = 0.1
     self.createStats = True
+    self.singleStats = True
+    self.statsFilename = "MAB_stats.csv"
+    self.statsFile = isfile(self.statsFilename) #? if concurrent run first round is lost
     # ############################
 
     self.ttype = ttype
@@ -39,17 +44,24 @@ class Trader_MAB( Trader ):
     ## Get all available traders count
     self.tradersNo = len(self.traders)
 
-    # Initialise 'trade-ness' parameters
+    # Initialise 'trade-ness' parameters | algorithm use count & earned values
     self.mu = dict( zip(self.keys, self.tradersNo * [self.earn]) )
     self.sigma = dict( zip(self.keys, self.tradersNo * [self.uncertainty]) )
+    self.tStats = dict( zip(self.keys, self.tradersNo * [0]) )
+    self.reward = dict( zip(self.keys, self.tradersNo * [[]]) )
 
     # Remember recent order
     self.recentOrder = None
 
     # Traders statistics
     if self.createStats:
-      self.tStatsFile = open( ('MAB_stats_%s_%s.csv' % (str(time()).replace('.', '-'), tid)), 'w' )
-      self.tStats = dict( zip(self.keys, self.tradersNo * [0]) )
+      if self.singleStats:
+          if self.statsFile:
+            self.tStatsFile = open( self.statsFilename, 'a' )
+          else:
+            self.tStatsFile = open( self.statsFilename, 'w' )
+      else:
+        self.tStatsFile = open( ('MAB_stats_%s_%s.csv' % (str(time()).replace('.', '-'), tid)), 'w' )
 
 
   # MAnage class destruction
@@ -57,8 +69,15 @@ class Trader_MAB( Trader ):
 
     # Traders statistics
     if self.createStats:
-      self.tStatsFile.write( "%s\n" % ", ".join( self.keys ) )
-      self.tStatsFile.write( "%s\n" % ", ".join(str(x) for x in self.tStats.values()) )
+      if self.singleStats:
+        if self.statsFile:
+          self.tStatsFile.write( "%s\n" % ", ".join(str(x) for x in self.tStats.values()) )
+        else:
+          self.tStatsFile.write( "%s\n" % ", ".join( self.keys ) )
+          self.tStatsFile.write( "%s\n" % ", ".join(str(x) for x in self.tStats.values()) )
+      else:
+        self.tStatsFile.write( "%s\n" % ", ".join( self.keys ) )
+        self.tStatsFile.write( "%s\n" % ", ".join(str(x) for x in self.tStats.values()) )
       self.tStatsFile.flush()
       self.tStatsFile.close()
 
@@ -91,10 +110,15 @@ class Trader_MAB( Trader ):
     # Remember about sub-traders
     for traderID in self.traders:
         self.traders[traderID].bookkeep(trade, order, verbose)
+    # Append reward to wining sub-trader
+    self.reward[self.currentTraderID].append(profit)
 
 
   # Get order, calculate trading price, and schedule
   def getorder( self, time, countdown, lob ):
+
+
+    
 
     if len( self.orders ) < 1:
       order = None
@@ -102,16 +126,42 @@ class Trader_MAB( Trader ):
       ## Memorise order - #? LAZY assumes only one order
       self.recentOrder = self.orders[-1]
 
-      ## Get samples
-      action = normal(self.mu.values(), self.sigma.values())
-      ## Choose algorithm
-      choice = argmax(action)
-      ## Check for double occurrences
-      if action.tolist().count(action[choice]) != 1 :
-        indices = [i for i, x in enumerate(action) if x == action[choice]]
-        choice = choice(indices)
-      ## Identify trader associated with choice
-      self.currentTraderID = self.keys[choice]
+
+
+
+#      ## Get samples
+#      action = normal(self.mu.values(), self.sigma.values())
+#      ## Choose algorithm
+#      choice = argmax(action)
+#      ## Check for double occurrences
+#      if action.tolist().count(action[choice]) != 1 :
+#        indices = [i for i, x in enumerate(action) if x == action[choice]]
+#        choice = choice(indices)
+#
+#      ## Identify trader associated with choice
+#      self.currentTraderID = self.keys[choice]
+
+
+      # Create a list of sub-traders tried in this round
+      notTried = self.keys[:]
+      # If any option has not been used so far use it # Identify trader associated with choice
+      zeroes = self.tStats.values().count(0)
+      if zeroes != 0:
+        indices = [key for key in self.tStats.keys() if self.tStats[key] == 0]
+        self.currentTraderID = choice(indices)
+      else:
+        ucb_values = [0.0] * self.tradersNo
+        total_counts = sum( self.tStats.values() )
+        for key in self.tStats.keys():
+          bonus = sqrt((2 * log(total_counts)) / float(self.tStats[key] ))
+          ucb_values[arm] = self.values[arm] + bonus
+        self.currentTraderID = ind_max(ucb_values)
+
+      # Record attempt
+      notTried.remove(self.currentTraderID)
+      
+
+
 
       ## Record trader choice or later statistics
       if self.createStats:
@@ -119,11 +169,14 @@ class Trader_MAB( Trader ):
 
       ## Simulate chosen trader and get order from it
       externalOrder = self.traders[self.currentTraderID].getorder( time, countdown, lob )
+
       # Construct order: substitute tid due to external touch of trader shuffle
-      if externalOrder != None:
-        order = Order(self.tid, externalOrder.otype, externalOrder.price, externalOrder.qty, time)
+      # If None choose other trader and penalise selected for not taking a shoot
+      if externalOrder == None:
+        # order = None
+
       else:
-        order = None
+        order = Order(self.tid, externalOrder.otype, externalOrder.price, externalOrder.qty, time)
 
     return order
 
@@ -134,6 +187,12 @@ class Trader_MAB( Trader ):
     # Remember about sub-traders #self.traders[self.currentTraderID].respond(time, lob, trade, verbose)
     for traderID in self.traders:
       self.traders[traderID].respond(time, lob, trade, verbose)
+
+    # Ensure that each of the algorithm 
+
+    # Check if currently used algorithm has made a trade and if so update its mean and variance
+
+
 
     # Adapt trader to current market structure
     ## Update posterior based on prior - decide on reward and uncertainty
@@ -148,14 +207,9 @@ class Trader_MAB( Trader ):
     # could buy for less? raise margin (i.e. cut the price)
     # no deal: aim for target price lower than best ask
 
-    # best bid has improved
-    # NB doesn't check if the improvement was by self
-
-    # hiton the lob?
+    # best bid has improved # NB doesn't check if the improvement was by self
 
     # trade happened and best ask price has got worse, or stayed same but quantity reduced -- assume previous best ask was lifted
-
-
 
     # if trade != None:
     #   print "Price of just made trade: ", trade['price']
