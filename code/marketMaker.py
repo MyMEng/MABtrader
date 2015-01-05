@@ -14,8 +14,10 @@ class Trader_MAB( Trader ):
 
   def __init__(self, ttype, tid, balance):
     # Predefine initial parameters
-    self.earn = 0
-    self.uncertainty = 0.1
+    # self.earn = 0
+    # self.uncertainty = 0.1
+    self.norm = float(1000 - 999) # based on max and min price on market
+    self.payout = None # payout for current trade
     self.createStats = True
     self.singleStats = True
     self.statsFilename = "MAB_stats.csv"
@@ -45,10 +47,11 @@ class Trader_MAB( Trader ):
     self.tradersNo = len(self.traders)
 
     # Initialise 'trade-ness' parameters | algorithm use count & earned values
-    self.mu = dict( zip(self.keys, self.tradersNo * [self.earn]) )
-    self.sigma = dict( zip(self.keys, self.tradersNo * [self.uncertainty]) )
+    # self.mu = dict( zip(self.keys, self.tradersNo * [self.earn]) )
+    # self.sigma = dict( zip(self.keys, self.tradersNo * [self.uncertainty]) )
     self.tStats = dict( zip(self.keys, self.tradersNo * [0]) )
-    self.reward = dict( zip(self.keys, self.tradersNo * [[]]) )
+    # self.reward = dict( zip(self.keys, self.tradersNo * [[0]]) )
+    self.value = dict( zip(self.keys, self.tradersNo * [0.0]) )
 
     # Remember recent order
     self.recentOrder = None
@@ -111,14 +114,30 @@ class Trader_MAB( Trader ):
     for traderID in self.traders:
         self.traders[traderID].bookkeep(trade, order, verbose)
     # Append reward to wining sub-trader
-    self.reward[self.currentTraderID].append(profit)
+    self.payout = reward # self.reward[self.currentTraderID].append(profit)
 
 
   # Get order, calculate trading price, and schedule
   def getorder( self, time, countdown, lob ):
 
+    # Choose sub-algorithm
+    def choice(toTry):
+      # If any option has not been used so far use it # Identify trader associated with choice
+      val = [self.tStats[x] for x in toTry]
+      zeroes = val.count(0)
 
-    
+      if zeroes != 0:
+        IDs = [key for key in toTry if self.tStats[key] == 0]
+        self.currentTraderID = choice(IDs)
+      else:
+        ucb_values = [0.0] * len(toTry)
+        total_counts = sum( self.tStats.values() )
+        for i, key in enumerate(toTry):
+          bonus = sqrt((2 * log(total_counts)) / float(self.tStats[key] ))
+          reward = self.value[key] #sum(self.reward[key])/float(len(self.reward[key]))
+          ucb_values[i] = reward + bonus # Give average earn
+        self.currentTraderID = toTry[argmax(ucb_values)]
+
 
     if len( self.orders ) < 1:
       order = None
@@ -144,39 +163,28 @@ class Trader_MAB( Trader ):
 
       # Create a list of sub-traders tried in this round
       notTried = self.keys[:]
-      # If any option has not been used so far use it # Identify trader associated with choice
-      zeroes = self.tStats.values().count(0)
-      if zeroes != 0:
-        indices = [key for key in self.tStats.keys() if self.tStats[key] == 0]
-        self.currentTraderID = choice(indices)
-      else:
-        ucb_values = [0.0] * self.tradersNo
-        total_counts = sum( self.tStats.values() )
-        for key in self.tStats.keys():
-          bonus = sqrt((2 * log(total_counts)) / float(self.tStats[key] ))
-          ucb_values[arm] = self.values[arm] + bonus
-        self.currentTraderID = ind_max(ucb_values)
 
-      # Record attempt
-      notTried.remove(self.currentTraderID)
-      
+      while( len(notTried) > 0 ):
+        # Select sub-algorithm
+        choice(notTried)
 
+        # Record attempt
+        notTried.remove(self.currentTraderID)
 
+        ## Simulate chosen trader and get order from it
+        externalOrder = self.traders[self.currentTraderID].getorder( time, countdown, lob )
 
-      ## Record trader choice or later statistics
-      if self.createStats:
-        self.tStats[self.currentTraderID] += 1
-
-      ## Simulate chosen trader and get order from it
-      externalOrder = self.traders[self.currentTraderID].getorder( time, countdown, lob )
-
-      # Construct order: substitute tid due to external touch of trader shuffle
-      # If None choose other trader and penalise selected for not taking a shoot
-      if externalOrder == None:
-        # order = None
-
-      else:
-        order = Order(self.tid, externalOrder.otype, externalOrder.price, externalOrder.qty, time)
+        # Construct order: substitute tid due to external touch of trader shuffle
+        # If None choose other trader and penalise selected for not taking a shoot
+        if externalOrder == None:
+          order = None
+          # Penalise current algorithm for not making the move
+          # self.reward[self.currentTraderID].append(0) -> with or without - not a difference
+          # and choose again via loop
+        else:
+          ## Issue order
+          order = Order(self.tid, externalOrder.otype, externalOrder.price, externalOrder.qty, time)
+          break
 
     return order
 
@@ -186,16 +194,21 @@ class Trader_MAB( Trader ):
 
     # Remember about sub-traders #self.traders[self.currentTraderID].respond(time, lob, trade, verbose)
     for traderID in self.traders:
-      self.traders[traderID].respond(time, lob, trade, verbose)
+      self.traders[traderID].respond(time, lob, trade, verbose)      
 
-    # Ensure that each of the algorithm 
+    # update sub-traders estimates: adapt trader to current market structure
+    if trade != None and self.payout != None:
+      ## Record trader choice or later statistics
+      self.tStats[self.currentTraderID] += 1
 
-    # Check if currently used algorithm has made a trade and if so update its mean and variance
-
-
-
-    # Adapt trader to current market structure
-    ## Update posterior based on prior - decide on reward and uncertainty
+      n = self.tStats[self.currentTraderID]
+      value = self.value[self.currentTraderID]
+      payout = self.payout / self.norm
+      if payout > 1:
+        print "Payout misuse!"
+      new_value = ((n - 1) / float(n)) * value + (1 / float(n)) * payout 
+      self.value[self.currentTraderID] = new_value
+      self.payout = None
 
     ## One component can be simulation of trader: compare trade made with other possibilities
     ##  and check whether could be better
@@ -217,6 +230,5 @@ class Trader_MAB( Trader ):
     #   print lob['asks']['best'], " vs. ", lob['asks']['worst']
     #   print lob['bids']['lob'] # list of orders [price, quantity]
     #   print lob['asks']['lob'] # list of orders [price, quantity]
-
     # price = self.orders[0].price
     # orderType = self.orders[0].otype
