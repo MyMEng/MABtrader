@@ -1,9 +1,30 @@
 \documentclass{llncs}
 \usepackage{lipsum}
 
+\usepackage{listings}
+\usepackage{color}
+\usepackage{setspace}
+
+\definecolor{Code}{rgb}{0,0,0}
+\definecolor{Decorators}{rgb}{0.5,0.5,0.5}
+\definecolor{Numbers}{rgb}{0.5,0,0}
+\definecolor{MatchingBrackets}{rgb}{0.25,0.5,0.5}
+\definecolor{Keywords}{rgb}{0,0,1}
+\definecolor{self}{rgb}{0,0,0}
+\definecolor{Strings}{rgb}{0,0.63,0}
+\definecolor{Comments}{rgb}{0,0.63,1}
+\definecolor{Backquotes}{rgb}{0,0,0}
+\definecolor{Classname}{rgb}{0,0,0}
+\definecolor{FunctionName}{rgb}{0,0,0}
+\definecolor{Operators}{rgb}{0,0,0}
+\definecolor{Background}{rgb}{0.98,0.98,0.98}
+
+\usepackage{minted}
+
+
 \begin{document}
-\title{My title}
-\subtitle{My subtitle\\\today}
+\title{MarketMaker:\\Multi-armed Bandits inspired trading algorithm}
+\subtitle{Bristol Stock Exchange extension\\[1em]\today}
 \author{Kacper \textbf{Sokol}---ks1591---45684}
 \institute{Department of Computer Science,\\
   University of Bristol\\
@@ -11,7 +32,113 @@
 %
 \maketitle
 %
-\section{1}
-\lipsum[1-50]
+
+\begin{abstract}
+This paper introduces trading algorithm for \emph{Bristol Stock Exchange}%
+\footnote{\url{https://github.com/davecliff/BristolStockExchange}} %
+which is inspired by \emph{Multi-armed Bandits} approach to \emph{exploration vs.\ exploitation} problem. Presented here algorithm is a wrapper for arbitrary trading agent. It uses aforementioned model to determine the best possible strategy for current trading session by adapting to opponents configuration.
+\end{abstract}
+\keywords{Bristol, Stock, Exchange, Multi-armed, Bandits, Trading, Algorithm}
+
+\section{Introduction}
+Bristol Stock Exchange(BSE) is a simple and minimal simulation of \emph{limit order book}(LOB) financial exchange with single tradable security. In the market any trader can issue an order, where each new order replaces the old one. It also assumes zero latency in communication between the traders and the exchange and that information about newly issued orders is distributed among agents before the next order can be issued.\\
+
+Designed algorithm trades on BSE using sub-traders---it is a wrapper for generic trading algorithm. In this study, used sub-traders are the one contained by default in BSE source code, but this is easily modifiable. Each order is issued with sub-trader considered for given moment as the most profitable. The choice which trader to use is governed by simplistic implementation of \emph{Multi-armed Bandits}(MAB) algorithm.\\
+
+To the best of my knowledge, presented here approach is first of its kind and has not been described or tested up. The source code of the algorithm is available both: in the \emph{\appendixname} at the end of this paper, and on-line at: \url{https://github.com/So-Cool/MABtrader}.\\
+
+\section{Methodology}
+The stock exchange market is highly complex system, which dynamics is governed by supply and demand. Many different traders with wide range of strategies issue orders to trade securities with highest possible margin. The best possible agent should beat the competition by adapting to the market situation
+
+To achieve this flexibility --- It is hard to write if and elses defining the model so that every possibility is covered\\
+chece probabiistic approach\\
+
+
+
+
+Why I used MABs
+
+Write how I used the MAB approach\\
+  how I wraped other algorithms\\
+  why I think it is good.\\
+
+the normal ditribution in selection to simulate exploration parameter
+
+
+if current-sub-algorithm algorithm starts to loos it will be replaced iwth other until loss is minimised and the same with earning: maximise tehem.
+
+But remember about exploration: mayb eother algorithm is better than our curretn cauze situation in the market has changed
+
+\section{Results}
+Give pie-chart of algo uses.\\
+
+Give the average earnings and roughly compare.
+
+try LONGER SESSIONS to allow it to learn
+
+\section{Discussion}
+
+Give detailed statistical analysis of results and give verdict.
+
+\section{Conclusion}
+Write that the algorithm is based on contained in the code hence the best possible performance it can get and defeat all is when competin with all available soultions at the amrket.
+
+
+
+
+\vfill
+\bibliographystyle{plain}
+\bibliography{ref}
+
+\newpage
+% \begin{appendices}
+\section*{\appendixname: MAB MarketMaker source code\label{app:MABmm}}
+
+% \inputminted[
+% frame=lines,
+% framesep=2mm,
+% baselinestretch=1.2,
+% fontsize=\footnotesize,
+% linenos
+% ]{python}{../code/marketMaker.py}
+
+\lstset{
+captionpos=b,
+breaklines=true,
+caption=MAB MarketMaker source code,
+label=lst:MABmm,
+%
+numbers=left,
+numberstyle=\footnotesize,
+numbersep=1em,
+xleftmargin=1em,
+framextopmargin=2em,
+framexbottommargin=2em,
+showspaces=false,
+showtabs=false,
+showstringspaces=false,
+frame=l,
+tabsize=4,
+% Basic
+basicstyle=\ttfamily\small\setstretch{1},
+backgroundcolor=\color{Background},
+language=Python,
+% Comments
+commentstyle=\color{Comments}\slshape,
+% Strings
+stringstyle=\color{Strings},
+morecomment=[s][\color{Strings}]{"""}{"""},
+morecomment=[s][\color{Strings}]{'''}{'''},
+% keywords
+morekeywords={import,from,class,def,for,while,if,is,in,elif,else,not,and,or,print,break,continue,return,True,False,None,access,as,,del,except,exec,finally,global,import,lambda,pass,print,raise,try,assert},
+keywordstyle={\color{Keywords}\bfseries},
+% additional keywords
+morekeywords={[2]@invariant},
+keywordstyle={[2]\color{Decorators}\slshape},
+emph={self},
+emphstyle={\color{self}\slshape},
+% 
+}\lstinputlisting{../code/marketMaker.py}
+
 
 \end{document}
