@@ -8,23 +8,28 @@ from numpy import argmax
 from time import time
 from os.path import isfile
 from math import sqrt, log
+from collections import deque
 
 class Trader_MAB( Trader ):
 
 
   def __init__(self, ttype, tid, balance):
     # Predefine initial parameters
-    # self.earn = 0
-    # self.uncertainty = 0.1
+    self.hisLen = 10
     self.norm = float(1000 - 1) # based on max and min price on market
+    ##############################
+
     self.payout = None # payout for current trade
     self.createStats = True
     self.singleStats = True
-    # Remember your assets
 
+    # Remember your assets
     self.assets = { 'bought':[], 'sold':[] }
     self.maxAssets = 3
     self.orderQueue = []
+
+    # Remember recent price history
+    self.priceHistory = { 'bids':{'best':deque(maxlen=hisLen), 'worst':deque(maxlen=hisLen)}, 'asks':{'best':deque(maxlen=hisLen), 'worst':deque(maxlen=hisLen)} }
 
     self.statsFilename = "MAB_stats.csv"
     self.statsFile = isfile(self.statsFilename) #? if concurrent run first round is lost
@@ -139,7 +144,7 @@ class Trader_MAB( Trader ):
       else: # short it
         # sell short - record
         self.assets['sold'].append( -transactionprice )
-        profit = 0
+        profit = -transactionprice
         # there is nothing to do with initial money
     else:
       sys.exit('FATAL: DIMM01 doesn\'t know .otype %s\n' % self.orders[0].otype)
@@ -226,6 +231,13 @@ class Trader_MAB( Trader ):
   # Update trader's statistics based on current market situation
   def respond(self, time, lob, trade, verbose):
 
+    # Calculate k-lag's
+    def lag( current, series ):
+      lags = []
+      for i in series:
+        lags.append(current-i)
+      return lags
+
     # Decide whether to buy / sell and give appropriate order
     ## Wait 5% of the time to discover trend: I first have to buy
     # analyse *self.assets*
@@ -253,10 +265,21 @@ class Trader_MAB( Trader ):
     # Check for current prices on the market to decide
     bb = lob['bids']['best']
     bw = lob['bids']['worst']
-    bq = len( lob['bids']['lob'] )
     ab = lob['asks']['best']
     aw = lob['asks']['worst']
-    aq = len(lob['asks']['lob'])
+
+    # Get lags
+    bbFluc = lag( bb, list(self.priceHistory['bids']['best']) )
+    bwFluc = lag( bw, list(self.priceHistory['bids']['worst']) )
+    abFluc = lag( ab, list(self.priceHistory['asks']['best']) )
+    awFluc = lag( aw, list(self.priceHistory['asks']['worst']) )
+
+    # Get trend
+    bbTrend = sum(bbFluc)
+    bwTrend = sum(bwFluc)
+    abTrend = sum(abFluc)
+    awTrend = sum(awFluc)
+
 
 
     # Check whether maximal number of assets reached
@@ -267,27 +290,26 @@ class Trader_MAB( Trader ):
     elif (len(self.assets['sold']) + len(self.orders)) >= 3:
       sell = False
     
-
-    if True:
-      # Find order to make and append to self.queue
-      pass
+    if sell: # sell
+      # sell something if price has improved
+      if 
       # append to self.queue
-    else:
+      # or wait to sell - but not too long
       pass
+    elif sell: # buy
+      # buy something or wait
       # append to self.queue
+      pass
+    else: # do whatever you want
+      # append to self.queue
+      pass
 
     # Check for order queue and if available engage
     if len(self.orders) == 0 and len(self.orderQueue) != 0:
       self.add_order(self.orderQueue.pop(0))
 
-
-
-    # remember the best LOB data ready for next response
-    # could buy for less? raise margin (i.e. cut the price)
-    # no deal: aim for target price lower than best ask
-
-    # best bid has improved # NB doesn't check if the improvement was by self
-
-    # trade happened and best ask price has got worse, or stayed same but quantity reduced
-    # -- assume previous best ask was lifted
-
+    # Make history
+    self.priceHistory['bids']['best'].append(bb)
+    self.priceHistory['bids']['worst'].append(bw)
+    self.priceHistory['asks']['best'].append(ab)
+    self.priceHistory['asks']['worst'].append(aw)
