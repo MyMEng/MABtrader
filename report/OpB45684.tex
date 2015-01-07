@@ -48,7 +48,9 @@ Designed algorithm trades on BSE using sub-traders---it is a wrapper for generic
 To the best of my knowledge, presented here approach is first of its kind and has not been described or tested up. The source code of the algorithm is available both: in the \emph{\appendixname} at the end of this paper, and on-line at: \url{https://github.com/So-Cool/MABtrader}.\\
 
 \section{Methodology}
-How to make decision when to buy and sell assets? -> I dont have to worry about selling to low or to high as sub-trader will enforse the minimum rice + possible commision which goes to my pocket
+How to make decision when to buy and sell assets? -> I dont have to worry about selling to low or to high as sub-trader will enforse the minimum rice + possible commision which goes to my pocket\\
+
+The agent is allowed to short-sell up to 3 assets.\\
 
 The stock exchange market is highly complex system, which dynamics is governed by supply and demand. Many different traders with wide range of strategies issue orders to trade securities with highest possible margin. The best possible agent should beat the competition by adapting to the market situation
 

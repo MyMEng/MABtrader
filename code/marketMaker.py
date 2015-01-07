@@ -25,8 +25,6 @@ class Trader_MAB( Trader ):
     self.assets = { 'bought':[], 'sold':[] }
     self.maxAssets = 3
     self.orderQueue = []
-    # is it shorting?
-    self.Shortage = False
 
     self.statsFilename = "MAB_stats.csv"
     self.statsFile = isfile(self.statsFilename) #? if concurrent run first round is lost
@@ -115,34 +113,34 @@ class Trader_MAB( Trader ):
     # NB What follows is **LAZY** -- assumes all orders are quantity=1
     transactionprice = trade['price']
 
-    if self.orders[0].otype == 'Bid' and not(self.Shortage):
+    if self.orders[0].otype == 'Bid':
       # Just bought so reduce initial Money
 
-      # check if I have shorted something
-      # if len(self.assets['sold']) != 0:
-        
-
-      self.initialMoney -= transactionprice
-      #memorise in self.assets to calculate profit later
-      self.assets['bought'].append( transactionprice )
-    # bought back from short selling
-    elif self.orders[0].otype == 'Bid' and self.Shortage:
-      # Find the worse price of shortage
-      maximum = min(self.assets['sold'])
-      profit = transactionprice + minimum
-      # Delete from short list
-      self.assets['sold'].remove( maximum )
-    elif self.orders[0].otype == 'Ask' and not(self.Shortage):
-      # sell what I have - find the maximum that I paid
-      maximum = max(self.assets['bought'])
-      profit = transactionprice-maximum
-      # Record
-      self.assets['bought'].remove( maximum )
-    elif self.orders[0].otype == 'Ask' and self.Shortage:
-      # sell short - record
-      self.assets['sold'].append( -transactionprice )
-      profit = 0
-      # there is nothing to do with initial money
+      # check if I have shorted something buy it back
+      if len(self.assets['sold']) != 0:
+        # Find the worse price of shortage
+        maximum = min(self.assets['sold'])
+        profit = transactionprice + minimum
+        # Delete from short list
+        self.assets['sold'].remove( maximum )
+      else:
+        self.initialMoney -= transactionprice
+        #memorise in self.assets to calculate profit later
+        self.assets['bought'].append( transactionprice )
+      
+      
+    elif self.orders[0].otype == 'Ask':
+      if len(self.assets['bought']) != 0: # sell something I bought
+        # sell what I have - find the maximum that I paid
+        maximum = max(self.assets['bought'])
+        profit = transactionprice-maximum
+        # Record
+        self.assets['bought'].remove( maximum )
+      else: # short it
+        # sell short - record
+        self.assets['sold'].append( -transactionprice )
+        profit = 0
+        # there is nothing to do with initial money
     else:
       sys.exit('FATAL: DIMM01 doesn\'t know .otype %s\n' % self.orders[0].otype)
 
@@ -261,13 +259,22 @@ class Trader_MAB( Trader ):
     aq = len(lob['asks']['lob'])
 
 
-    # Check whether maximal number of assets reached: bought = bought; sold = shorted
-    if ( len(self.assets['bought']) + len(self.assets['sold']) + len(self.orders) ) <= self.maxAssets:
+    # Check whether maximal number of assets reached
+    sell = None
+    # bought = bought; sold = shorted -- only one can be > 0
+    if (len(self.assets['bought']) + len(self.orders)) >= 3:
+      sell = True
+    elif (len(self.assets['sold']) + len(self.orders)) >= 3:
+      sell = False
+    
+
+    if True:
       # Find order to make and append to self.queue
       pass
+      # append to self.queue
     else:
-      # I cannot buy more
       pass
+      # append to self.queue
 
     # Check for order queue and if available engage
     if len(self.orders) == 0 and len(self.orderQueue) != 0:
