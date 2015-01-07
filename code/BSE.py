@@ -758,7 +758,7 @@ def populate_market(traders_spec, traders, shuffle, verbose):
                         return Trader_ZIP('ZIP', name, 0.00)
                 # KBS # add my robot
                 elif robottype == 'MAB':
-                        return Trader_MAB('MAB', name, 0.00)
+                        return Trader_MAB('MAB', name, 1000.00)
                 else:
                         sys.exit('FATAL: don\'t know robot type %s\n' % robottype)
 
@@ -803,6 +803,18 @@ def populate_market(traders_spec, traders, shuffle, verbose):
 
         if shuffle: shuffle_traders('S', n_sellers, traders)
 
+
+        n_mktmakers= 0
+        for ms in traders_spec['mktmakers']:
+            ttype = ms[0]
+            for m in range(ms[1]):
+                tname = 'M%02d' % n_mktmakers # mktmaker i.d. string
+                traders[tname] = trader_type(ttype, tname)
+                n_mktmakers = n_mktmakers + 1
+        if n_mktmakers < 1:
+            sys.exit('FATAL: no marketmakers specified\n')
+        if shuffle: shuffle_traders('M', n_mktmakers, traders)
+
         if verbose :
                 for t in range(n_buyers):
                         bname = 'B%02d' % t
@@ -810,9 +822,12 @@ def populate_market(traders_spec, traders, shuffle, verbose):
                 for t in range(n_sellers):
                         bname = 'S%02d' % t
                         print(traders[bname])
+                for t in range(n_mktmakers):
+                    bname = 'M%02d' % t
+                    print(traders[bname])
 
 
-        return {'n_buyers':n_buyers, 'n_sellers':n_sellers}
+        return {'n_buyers':n_buyers, 'n_sellers':n_sellers, 'n_mktmakers':n_mktmakers}
 
 
 
@@ -1024,7 +1039,7 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
 
         # timestep set so that can process all traders in one second
         # NB minimum interarrival time of customer orders may be much less than this!! 
-        timestep = 1.0 / float(trader_stats['n_buyers'] + trader_stats['n_sellers'])
+        timestep = 1.0 / float(trader_stats['n_buyers'] + trader_stats['n_sellers']+trader_stats['n_mktmakers'])
         
         duration = float(endtime - starttime)
 
@@ -1099,7 +1114,7 @@ if __name__ == "__main__":
         # set up parameters for the session
 
         start_time = 0.0
-        end_time = 600.0
+        end_time = 600.0 #KBS to 6500.0
         duration = end_time - start_time
 
 
@@ -1136,13 +1151,14 @@ if __name__ == "__main__":
         order_sched = {'sup':supply_schedule, 'dem':demand_schedule,
                        'interval':30, 'timemode':'drip-poisson'}
 
-        buyers_spec = [('GVWY',10),('SHVR',10),('ZIC',10),('ZIP',10)]
+        buyers_spec = [('GVWY',1),('SHVR',1),('ZIC',1),('ZIP',1)]
+        mktmakers_spec = [('MAB',1)]
         sellers_spec = buyers_spec
-        traders_spec = {'sellers':sellers_spec, 'buyers':buyers_spec}
+        traders_spec = {'sellers':sellers_spec, 'buyers':buyers_spec, 'mktmakers':mktmakers_spec}
 
-        # run a sequence of trials, one session per trial
+        ### run a sequence of trials, one session per trial
 
-        n_trials = 1
+        n_trials = 2
         tdump=open('avg_balance.csv','w')
         trial = 1
         if n_trials > 1:

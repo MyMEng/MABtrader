@@ -20,13 +20,25 @@ class Trader_MAB( Trader ):
     self.payout = None # payout for current trade
     self.createStats = True
     self.singleStats = True
+    # Remember your assets
+
+    self.assets = { 'bought':[], 'sold':[] }
+    self.maxAssets = 3
+    self.orderQueue = []
+    # is it shorting?
+    self.Shortage = False
+
     self.statsFilename = "MAB_stats.csv"
     self.statsFile = isfile(self.statsFilename) #? if concurrent run first round is lost
     # ############################
 
     self.ttype = ttype
     self.tid = tid
-    self.balance = balance
+
+    self.balance = 0
+    self.initialMoney = balance
+    self.givenCash = balance
+
     self.blotter = []
     self.orders = []
     self.willing = 1        #?
@@ -35,11 +47,11 @@ class Trader_MAB( Trader ):
 
     # Initialise all traders predefined for this system: GVWY, ZIC, SHVR, SNPR, ZIP, MAB
     self.keys = [ 'GVWY', 'ZIC', 'SHVR', 'SNPR', 'ZIP' ]
-    self.traders = { 'GVWY' : Trader_Giveaway('GVWY', None, self.balance),
-      'ZIC' : Trader_ZIC('ZIC', None, self.balance),
-      'SHVR' : Trader_Shaver('SHVR', None, self.balance),
-      'SNPR' : Trader_Sniper('SNPR', None, self.balance),
-      'ZIP' : Trader_ZIP('ZIP', None, self.balance) }
+    self.traders = { 'GVWY' : Trader_Giveaway('GVWY', None, 0.0),
+      'ZIC' : Trader_ZIC('ZIC', None, 0.0),
+      'SHVR' : Trader_Shaver('SHVR', None, 0.0),
+      'SNPR' : Trader_Sniper('SNPR', None, 0.0),
+      'ZIP' : Trader_ZIP('ZIP', None, 0.0) }
 
     self.currentTraderID = choice( self.keys )
 
@@ -102,21 +114,60 @@ class Trader_MAB( Trader ):
     self.blotter.append(trade) # add trade record to trader's blotter
     # NB What follows is **LAZY** -- assumes all orders are quantity=1
     transactionprice = trade['price']
-    if self.orders[0].otype == 'Bid':
-      profit = self.orders[0].price-transactionprice
+
+    if self.orders[0].otype == 'Bid' and not(self.Shortage):
+      # Just bought so reduce initial Money
+
+      # check if I have shorted something
+      # if len(self.assets['sold']) != 0:
+        
+
+      self.initialMoney -= transactionprice
+      #memorise in self.assets to calculate profit later
+      self.assets['bought'].append( transactionprice )
+    # bought back from short selling
+    elif self.orders[0].otype == 'Bid' and self.Shortage:
+      # Find the worse price of shortage
+      maximum = min(self.assets['sold'])
+      profit = transactionprice + minimum
+      # Delete from short list
+      self.assets['sold'].remove( maximum )
+    elif self.orders[0].otype == 'Ask' and not(self.Shortage):
+      # sell what I have - find the maximum that I paid
+      maximum = max(self.assets['bought'])
+      profit = transactionprice-maximum
+      # Record
+      self.assets['bought'].remove( maximum )
+    elif self.orders[0].otype == 'Ask' and self.Shortage:
+      # sell short - record
+      self.assets['sold'].append( -transactionprice )
+      profit = 0
+      # there is nothing to do with initial money
     else:
-      profit = transactionprice-self.orders[0].price
-    self.balance += profit
+      sys.exit('FATAL: DIMM01 doesn\'t know .otype %s\n' % self.orders[0].otype)
+
+    # fill the account and stay with commission
+    if self.initialMoney == self.givenCash: # all profit for me
+      self.balance += profit
+    elif self.initialMoney > self.givenCash: # to much in bank-payout
+      over = self.givenCash - self.initialMoney
+      self.initialMoney -= over
+      profit += over
+      self.balance +=  profit
+    elif self.initialMoney < self.givenCash:
+      under = self.givenCash - self.initialMoney
+      self.initialMoney += under
+      profit -= under
+      self.balance += profit
+
     if verbose: print('%s profit=%d balance=%d ' % (outstr, profit, self.balance))
     self.del_order(order) # delete the order
 
     # Remember about sub-traders
     for traderID in self.traders:
         self.traders[traderID].bookkeep(trade, order, verbose)
-    # Append reward to wining sub-trader
-    self.payout = profit # self.reward[self.currentTraderID].append(profit)
-    if profit < 0:
-      print "LOL ", profit," ", self.currentTraderID
+    # memorise profit
+    self.payout = profit
 
 
   # Get order, calculate trading price, and schedule
@@ -147,22 +198,6 @@ class Trader_MAB( Trader ):
       ## Memorise order - #? LAZY assumes only one order
       self.recentOrder = self.orders[-1]
 
-
-
-
-#      ## Get samples
-#      action = normal(self.mu.values(), self.sigma.values())
-#      ## Choose algorithm
-#      choice = argmax(action)
-#      ## Check for double occurrences
-#      if action.tolist().count(action[choice]) != 1 :
-#        indices = [i for i, x in enumerate(action) if x == action[choice]]
-#        choice = choice(indices)
-#
-#      ## Identify trader associated with choice
-#      self.currentTraderID = self.keys[choice]
-
-
       # Create a list of sub-traders tried in this round
       notTried = self.keys[:]
 
@@ -181,7 +216,6 @@ class Trader_MAB( Trader ):
         if externalOrder == None:
           order = None
           # Penalise current algorithm for not making the move
-          # self.reward[self.currentTraderID].append(0) -> with or without - not a difference
           # and choose again via loop
         else:
           ## Issue order
@@ -194,6 +228,10 @@ class Trader_MAB( Trader ):
   # Update trader's statistics based on current market situation
   def respond(self, time, lob, trade, verbose):
 
+    # Decide whether to buy / sell and give appropriate order
+    ## Wait 5% of the time to discover trend: I first have to buy
+    # analyse *self.assets*
+
     # Remember about sub-traders #self.traders[self.currentTraderID].respond(time, lob, trade, verbose)
     for traderID in self.traders:
       self.traders[traderID].respond(time, lob, trade, verbose)      
@@ -205,32 +243,44 @@ class Trader_MAB( Trader ):
 
       n = self.tStats[self.currentTraderID]
       value = self.value[self.currentTraderID]
-      payout = self.payout / self.norm
+      payout = self.payout / self.norm *20
       if payout > 1:
-        print "Payout misuse!"
+        print "Payout misuse: ", payout
+      elif payout <= 0:
+        payout = 0.00000000001
       new_value = ((n - 1) / float(n)) * value + (1 / float(n)) * payout 
       self.value[self.currentTraderID] = new_value
       self.payout = None
 
-    ## One component can be simulation of trader: compare trade made with other possibilities
-    ##  and check whether could be better
-    # self.recentOrder
-    # (GVWYo,ZICo,SHVRo,SNPRo,ZIPo) = simulateTrader((time, countdown, lob), traderID)
+    # Check for current prices on the market to decide
+    bb = lob['bids']['best']
+    bw = lob['bids']['worst']
+    bq = len( lob['bids']['lob'] )
+    ab = lob['asks']['best']
+    aw = lob['asks']['worst']
+    aq = len(lob['asks']['lob'])
 
-    ## The other can be ...
+
+    # Check whether maximal number of assets reached: bought = bought; sold = shorted
+    if ( len(self.assets['bought']) + len(self.assets['sold']) + len(self.orders) ) <= self.maxAssets:
+      # Find order to make and append to self.queue
+      pass
+    else:
+      # I cannot buy more
+      pass
+
+    # Check for order queue and if available engage
+    if len(self.orders) == 0 and len(self.orderQueue) != 0:
+      self.add_order(self.orderQueue.pop(0))
+
+
+
     # remember the best LOB data ready for next response
     # could buy for less? raise margin (i.e. cut the price)
     # no deal: aim for target price lower than best ask
 
     # best bid has improved # NB doesn't check if the improvement was by self
 
-    # trade happened and best ask price has got worse, or stayed same but quantity reduced -- assume previous best ask was lifted
+    # trade happened and best ask price has got worse, or stayed same but quantity reduced
+    # -- assume previous best ask was lifted
 
-    # if trade != None:
-    #   print "Price of just made trade: ", trade['price']
-    #   print lob['bids']['best'], " vs. ", lob['bids']['worst']
-    #   print lob['asks']['best'], " vs. ", lob['asks']['worst']
-    #   print lob['bids']['lob'] # list of orders [price, quantity]
-    #   print lob['asks']['lob'] # list of orders [price, quantity]
-    # price = self.orders[0].price
-    # orderType = self.orders[0].otype
