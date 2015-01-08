@@ -28,6 +28,8 @@ class Trader_MAB( Trader ):
     self.createStats = True
     self.singleStats = True
 
+    self.transactionInProgress = None
+
     # get order to issue
     self.orderToIssue = None
 
@@ -183,6 +185,7 @@ class Trader_MAB( Trader ):
         self.traders[traderID].del_order(None) # bookkeep(trade, order, verbose)
     # memorise profit
     self.payout = profit
+    self.transactionInProgress = None
 
 
   # Get order, calculate trading price, and schedule
@@ -321,7 +324,7 @@ class Trader_MAB( Trader ):
 
 
     # Check if clear-out
-    if self.clearout:
+    if False:#self.clearout:
       # get rid of all you have
       # if there is any bought asset: sell it
       if len(self.assets['bought']) > 0:
@@ -343,12 +346,17 @@ class Trader_MAB( Trader ):
     # proceed with trading
     else:
       # Check whether maximal number of assets reached
-      action = 'free'
-      # bought = bought; sold = shorted -- only one can be > 0
-      if (len(self.assets['bought']) + len(self.orders)) >= 3:
-        action = 'sell'
-      elif (len(self.assets['sold']) + len(self.orders)) >= 3:
-        action = 'buy'
+      action = self.transactionInProgress
+      if self.transactionInProgress == None:
+        action = 'free'
+        # bought = bought; sold = shorted -- only one can be > 0
+        # if (len(self.assets['bought']) + len(self.orders)) >= 3:
+        if len(self.assets['bought']) > 0:
+          action = 'sell'
+        # elif (len(self.assets['sold']) + len(self.orders)) >= 3:
+        elif len(self.assets['sold']) > 0:
+          action = 'buy'
+        self.transactionInProgress = action
 
       # print self.lastBB - bbTrend
       # print self.lastAB - abTrend, "\n"
@@ -359,7 +367,6 @@ class Trader_MAB( Trader ):
           # if asks peaked make an offer
           p = max(self.assets['bought']) # if not working try min
           if bbTrend - self.lastBB > 0 and p >= lob['bids']['best'] :
-            print "Ding Dong"
             o = Order(self.tid, 'Ask', p, 1, time)
             # self.orderQueue.append(o)
             self.orderToIssue = o
