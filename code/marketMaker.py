@@ -138,6 +138,7 @@ class Trader_MAB( Trader ):
         minimum = min(self.assets['sold'])
         profit = transactionprice + minimum
         # Delete from short list
+        self.balance += transactionprice
         print "Bing"
         self.assets['sold'].remove( minimum )
       else:
@@ -155,14 +156,16 @@ class Trader_MAB( Trader ):
         maximum = max(self.assets['bought'])
         profit = transactionprice-maximum
         self.balance += transactionprice
-        self.balance += profit
+        # self.balance += profit
         # Record
         self.assets['bought'].remove( maximum )
       else: # short it
         # sell short - record
         print "Bang"
         self.assets['sold'].append( -transactionprice )
-        profit = -transactionprice
+        # profit = -transactionprice
+        profit = 0
+        self.balance -= transactionprice
         # there is nothing to do with initial money
       print "sold: ", order.price
     else:
@@ -399,7 +402,7 @@ class Trader_MAB( Trader ):
       elif action == 'free': # do whatever you want
         # based on what trends better buy or sell
         # if buyers want to pay more and more try to sell
-        if (bbTrend - self.lastBB) >= (self.lastAB - abTrend) and bbTrend>0 and len(self.assets['bought']) > 0:
+        if (bbTrend - self.lastBB) >= (self.lastAB - abTrend) and bbTrend>0:# and len(self.assets['bought']) > 0:
           # Sell
           if bbTrend - self.lastBB > 0 :
             currentPrice = lob['asks']['best']
