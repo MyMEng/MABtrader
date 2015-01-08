@@ -373,8 +373,9 @@ class Trader_MAB( Trader ):
         # if upward trajectory in price act
         if bbTrend>0:
           # if asks peaked make an offer
-          p = max(self.assets['bought']) # if not working try min
-          if bbTrend - self.lastBB > 0 and p >= lob['bids']['best'] :
+          p = max(self.assets['bought']) if self.assets['bought'] != [] else 1 # if not working try min
+          p = max( p, lob['asks']['best'] )
+          if bbTrend - self.lastBB > 0 and p >= lob['asks']['best'] and p != None :
             o = Order(self.tid, 'Ask', p, 1, time)
             # self.orderQueue.append(o)
             self.orderToIssue = o
@@ -388,8 +389,9 @@ class Trader_MAB( Trader ):
         # if downward trajectory in price act
         if abTrend<0:
           # if asks peaked make an offer
-          p = abs( max(self.assets['sold']) ) # if not working try min
-          if abTrend - self.lastAB < 0 and p <= lob['asks']['best'] :
+          p = abs( max(self.assets['sold']) ) if self.assets['sold'] != [] else 1000 # if not working try min
+          p = min(p, lob['bids']['best'])
+          if abTrend - self.lastAB < 0 and p <= lob['bids']['best'] and p != None :
             o = Order(self.tid, 'Bid', p, 1, time)
             # self.orderQueue.append(o)
             self.orderToIssue = o
@@ -403,6 +405,7 @@ class Trader_MAB( Trader ):
         # based on what trends better buy or sell
         # if buyers want to pay more and more try to sell
         if (bbTrend - self.lastBB) >= (self.lastAB - abTrend) and bbTrend>0 and len(self.assets['bought']) > 0:
+          self.transactionInProgress = 'sell'
           # Sell
           if bbTrend - self.lastBB > 0 :
             currentPrice = lob['asks']['best']
@@ -415,6 +418,7 @@ class Trader_MAB( Trader ):
 
         # if seller want to sell for less and less try to buy
         elif (bbTrend - self.lastBB) <= (self.lastAB - abTrend) and abTrend>0:
+          self.transactionInProgress = 'buy'
           # Buy
           if abTrend - self.lastAB < 0 :
             currentPrice = lob['bids']['best']
