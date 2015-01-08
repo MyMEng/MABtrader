@@ -68,26 +68,17 @@ In the later case it makes a decision based on blah blah blah...
 The design of discussed trader is inspired by gaining in popularity in recent years framework for testing hypothesis. Multi-armed bandits are taking place of \emph{A-B testing} as they allow for dynamic change of environmental set-up and not only data collection for later analysis.\\
 The main concept behind them is simply row of slot machines each yielding some reward distributed according to some unknown distribution. Once the armed was pulled the machine gives us reward which then can be used to better estimate the distribution underlying this reward. The more we play given machine the better we understand its reward mechanism.\\
 The main problem with this setting is balancing \emph{exploration} and \emph{exploitation} to achieve optimal long term reward. The exploration is roughly speaking using under-discovered machines to learn more about the environment and exploitation is using current knowledge to play machine considered as most rewarding to increase overall reward.\\
-Multi-armed Bandits is well documented by~\cite{berry+firstedt, gittins+glazebrook+weber} problem with some simple tackling this vast problem. MABs are well known technique in on-line adversing and are used to maximise the click-through rate by arranging ads in best suited places for given customer by companies such as Google~\cite{AYPSze12, ASMB:ASMB874}, LinkedIn~\cite{Tang:2013:AAF:2505515.2514700}, Microsoft~\cite{graepel2010web}, Yahoo~\cite{Li:2010:CAP:1772690.1772758}.\\
+Multi-armed Bandits is well documented by~\cite{berry+firstedt,gittins+glazebrook+weber} problem with some simple tackling this vast problem. MABs are well known technique in on-line adversing and are used to maximise the click-through rate by arranging ads in best suited places for given customer by companies such as Google~\cite{AYPSze12,ASMB:ASMB874}, LinkedIn~\cite{Tang:2013:AAF:2505515.2514700}, Microsoft~\cite{graepel2010web}, Yahoo~\cite{Li:2010:CAP:1772690.1772758}.\\
 
 In trader context I adapted MAB technique where traders are arms in the machine; reward is the profit made by trader on given order; and exploration vs. exploitation is discovering potential associated with each trader in current market.\\
 The approach to solve this MAB problem is \emph{Upper Confidence Bound}(UCB)~\cite{white2012bandit} which is simple yet powerful technique to find optimal solution. Furthermore, it prevents ``\emph{sticking}'' i.e.\ using arm (trader) that is currently best but too little is known about other arms(traders) to  have strong evidence of its superiority.\\
 
-To achieve this flexibility --- It is hard to write if and elses defining the model so that every possibility is covered\\
-chece probabiistic approach\\
+Application of MAB in trader creates possibility of probabilistic choices based on current market structure. It does not require complex Bayesian approach: collecting enormous amount of data would be impractical. Furthermore it does not require to construct complex decision if-else model analysing current market structure to choose appropriate to use trader. Both this feature of chosen solution give great flexibility and adaptability.\\
 
-Write how I used the MAB approach\\
-  how I wraped other algorithms\\
-  why I think it is good.\\
+Presented trader is a simple wrapper for traders compatible with BSE. It calls appropriate methods at each of them updating their internal variables and issuing them orders. Once single trader is chosen for given round its order is collected and submitted to the exchange as presented trader's order.\\
+The algorithm ensures that every sub-trader was tried at least once to collect the reward (earnings on trade) and be able to calculate its potential in the market. Then by calculating UCB on rewards plus the uncertainty parameter of solution it chooses the best solution for current market. The uncertainty parameter ensures exploration of other solutions outside of the best scoring and acts a a changing lever if current sub-trader begins to under-perform in comparison with other available sub-traders until the reward is maximised again.\\
 
-the normal ditribution in selection to simulate exploration parameter
-
-
-if current-sub-algorithm algorithm starts to loos it will be replaced iwth other until loss is minimised and the same with earning: maximise tehem.
-
-But remember about exploration: mayb eother algorithm is better than our curretn cauze situation in the market has changed
-
-Write that the algorithm is based on contained in the code hence the best possible performance it can get and defeat all is when competin with all available soultions at the amrket.\\
+In carried out experiments the opponents of MAB trader were the same as employed sub-traders. This situation may result in advantageous behaviour of presented trader as it knows the algorithms of competition.
 
 \section{Results}
 One / Multiple in the MArket\\
@@ -113,7 +104,9 @@ Give detailed statistical analysis of results and give verdict blah blah blah...
 \section{Conclusion}
 Used approach is novel and the paper presents only rough framework how to use it. There is still lot of work to be done and research to be carried out to understand use of Multi-armed Bandits in trading algorithms.\\
 
-This study engages only use of predefined in BSE traders. Presented here framework can be easily generalised to use more complex and diversified sub-traders covering wider range of possible market situations. The next viable goal extending this study would be to employ more sub-traders and check the performance of proposed solution.
+This study engages only use of predefined in BSE traders. Presented here framework can be easily generalised to use more complex and diversified sub-traders covering wider range of possible market situations. The next viable goal extending this study would be to employ more sub-traders and check the performance of proposed solution.\\
+Also another study is needed inspecting behaviour of MAB trader where used sub-traders differ from other strategies used by other agents in the market.\\
+Finally, as MAB strategies show their full potential in long run experiments another study should be carried out with longer trading sessions.
 
 
 \vfill

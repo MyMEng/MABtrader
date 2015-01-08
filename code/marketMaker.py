@@ -20,7 +20,7 @@ class Trader_MAB( Trader ):
     self.panic = 0.1
     ##############################
 
-    self.slearout = False
+    self.clearout = False
 
     self.payout = None # payout for current trade
     self.createStats = True
@@ -179,7 +179,7 @@ class Trader_MAB( Trader ):
   # Get order, calculate trading price, and schedule
   def getorder( self, time, countdown, lob ):
     if countdown < self.panic:
-      self.payout = True
+      self.clearout = True
 
     # Choose sub-algorithm
     def selfChoice(toTry):
@@ -282,22 +282,40 @@ class Trader_MAB( Trader ):
       aw=0
 
     # Get lags # Get trend
+    bbFluc = None
+    bbTrend =None
     if bb != None and list(self.priceHistory['bids']['best']) != []:
       bbFluc = lag( bb, list(self.priceHistory['bids']['best']) )
       bbTrend = sum(bbFluc)
+
+    bwFluc = None
+    bwTrend =None
     if bw != None and list(self.priceHistory['bids']['worst']) != []:
       bwFluc = lag( bw, list(self.priceHistory['bids']['worst']) )
       bwTrend = sum(bwFluc)
+
+    abFluc = None
+    abTrend =None
     if ab != None and list(self.priceHistory['asks']['best']) != []:
       abFluc = lag( ab, list(self.priceHistory['asks']['best']) )
       abTrend = sum(abFluc)
+
+    abFluc = None
+    abTrend =None
     if aw != None and list(self.priceHistory['asks']['worst']) != []:
       awFluc = lag( aw, list(self.priceHistory['asks']['worst']) )
       awTrend = sum(awFluc)
 
     
+
+
+
+
+
+    print bbFluc
+    print bbTrend
     
-    # if self.payout - start clearing out
+    # if self.clearout - start clearing out
 
 
 
@@ -322,6 +340,13 @@ class Trader_MAB( Trader ):
     else: # do whatever you want
       # append to self.queue
       pass
+
+
+
+
+
+
+
 
     # Check for order queue and if available engage
     if len(self.orders) == 0 and len(self.orderQueue) != 0:
