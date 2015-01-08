@@ -349,7 +349,6 @@ class Trader:
 
 
         def bookkeep(self, trade, order, verbose):
-
                 outstr = '%s (%s) bookkeeping: orders=' % (self.tid, self.ttype)
                 for order in self.orders: outstr = outstr + str(order)
 

@@ -21,6 +21,8 @@ class Trader_MAB( Trader ):
     ##############################
 
     self.clearout = False
+    self.lastBB = 0
+    self.lastAB = 0
 
     self.payout = None # payout for current trade
     self.createStats = True
@@ -150,7 +152,7 @@ class Trader_MAB( Trader ):
         profit = -transactionprice
         # there is nothing to do with initial money
     else:
-      sys.exit('FATAL: DIMM01 doesn\'t know .otype %s\n' % self.orders[0].otype)
+      sys.exit('FATAL: MAB doesn\'t know .otype %s\n' % self.orders[0].otype)
 
     # fill the account and stay with commission
     if self.initialMoney == self.givenCash: # all profit for me
@@ -268,84 +270,127 @@ class Trader_MAB( Trader ):
       self.payout = None
 
     # Check for current prices on the market to decide
-    bb = lob['bids']['best']
-    if bb == None:
-      bb=0
-    bw = lob['bids']['worst']
-    if bw == None:
-      bw=0
-    ab = lob['asks']['best']
-    if ab == None:
-      ab=0
-    aw = lob['asks']['worst']
-    if aw == None:
-      aw=0
-
-    # Get lags # Get trend
     bbFluc = None
     bbTrend =None
-    if bb != None and list(self.priceHistory['bids']['best']) != []:
+    # bwFluc = None
+    # bwTrend =None
+    abTrend =None
+    abFluc = None
+    # awTrend =None
+    # awFluc = None
+    bb = lob['bids']['best']
+    if bb != None:
       bbFluc = lag( bb, list(self.priceHistory['bids']['best']) )
       bbTrend = sum(bbFluc)
+    else:
+      bb = 0
+      bbTrend = 0
 
-    bwFluc = None
-    bwTrend =None
-    if bw != None and list(self.priceHistory['bids']['worst']) != []:
-      bwFluc = lag( bw, list(self.priceHistory['bids']['worst']) )
-      bwTrend = sum(bwFluc)
+    # bw = lob['bids']['worst']
+    # if bw != None:
+    #   bwFluc = lag( bw, list(self.priceHistory['bids']['worst']) )
+    #   bwTrend = sum(bwFluc)
+    # else:
+    #   bw = 0
 
-    abFluc = None
-    abTrend =None
-    if ab != None and list(self.priceHistory['asks']['best']) != []:
+    ab = lob['asks']['best']
+    if ab != None:
       abFluc = lag( ab, list(self.priceHistory['asks']['best']) )
       abTrend = sum(abFluc)
+    else:
+      ab = 0
+      abTrend = 0
 
-    abFluc = None
-    abTrend =None
-    if aw != None and list(self.priceHistory['asks']['worst']) != []:
-      awFluc = lag( aw, list(self.priceHistory['asks']['worst']) )
-      awTrend = sum(awFluc)
-
-    
-
-
-
-
-
-    print bbFluc
-    print bbTrend
-    
-    # if self.clearout - start clearing out
+    # aw = lob['asks']['worst']
+    # if aw != None:
+    #   awFluc = lag( aw, list(self.priceHistory['asks']['worst']) )
+    #   awTrend = sum(awFluc)
+    # else:
+    #   aw = 0
 
 
+    # Check if clear-out
+    if self.clearout:
+      # get rid of all you have
+      # if there is any bought asset: sell it
+      if len(self.assets['bought']) > 0:
+        # Find top paid price
+        p = max(self.assets['bought'])
+        o = Order(self.tid, 'Ask', p, 1, time)
+        self.orderQueue.append(o)
+      # if there is any shorted asset: buy it back
+      elif len(self.assets['sold']) > 0:
+        # Find top paid price
+        p = max(self.assets['sold'])
+        o = Order(self.tid, 'Bid', p, 1, time)
+        self.orderQueue.append(o)
+      # I have nothing: do nothing
+      else:
+        pass
+    # proceed with trading
+    else:
+      # Check whether maximal number of assets reached
+      action = 'free'
+      # bought = bought; sold = shorted -- only one can be > 0
+      if (len(self.assets['bought']) + len(self.orders)) >= 3:
+        action = 'sell'
+      elif (len(self.assets['sold']) + len(self.orders)) >= 3:
+        action = 'buy'
 
-    # Check whether maximal number of assets reached
-    sell = None
-    # bought = bought; sold = shorted -- only one can be > 0
-    if (len(self.assets['bought']) + len(self.orders)) >= 3:
-      sell = True
-    elif (len(self.assets['sold']) + len(self.orders)) >= 3:
-      sell = False
-    
-    if sell: # sell
-      # sell something if price has improved
-      # if 
-      # append to self.queue
-      # or wait to sell - but not too long
-      pass
-    elif sell: # buy
-      # buy something or wait
-      # append to self.queue
-      pass
-    else: # do whatever you want
-      # append to self.queue
-      pass
+      # print self.lastBB - bbTrend
+      # print self.lastAB - abTrend, "\n"
+      
+      if action == 'sell': # sell
+        # if upward trajectory in price act
+        if bbTrend>0:
+          # if asks peaked make an offer
+          p = max(self.assets['bought']) # if not working try min
+          if bbTrend - self.lastBB > 0 and p >= lob['bids']['best'] :
+            o = Order(self.tid, 'Ask', p, 1, time)
+            self.orderQueue.append(o)
+          else: # wait for peak
+            pass
+        else: # wait
+          pass
 
 
+      elif action == 'buy': # buy
 
 
+        # if downward trajectory in price act
+        if abTrend<0:
+          # if asks peaked make an offer
+          p = abs( max(self.assets['sold']) ) # if not working try min
+          if abTrend - self.lastAB < 0 and p <= lob['asks']['best'] :
+            o = Order(self.tid, 'Bid', p, 1, time)
+            self.orderQueue.append(o)
+          else: # wait for peak
+            pass
+        else: # wait
+          pass
 
 
+      elif action == 'free': # do whatever you want
+        # based on what trends better buy or sell
+        # if buyers want to pay more and more try to sell
+        if (bbTrend - self.lastBB) >= (self.lastAB - abTrend) and bbTrend>0 :
+          # Sell
+          if bbTrend - self.lastBB > 0 :
+            o = Order(self.tid, 'Ask', lob['bids']['best'], 1, time)
+            self.orderQueue.append(o)
+
+        # if seller want to sell for less and less try to buy
+        elif (bbTrend - self.lastBB) <= (self.lastAB - abTrend) and abTrend>0:
+          # Buy
+          if abTrend - self.lastAB < 0 :
+            o = Order(self.tid, 'Bid', lob['asks']['best'], 1, time)
+            self.orderQueue.append(o)
+        else:
+          #wait
+          pass
+      
+      else: # error
+        sys.exit('MAB: action undefined-%s' % action)
 
 
     # Check for order queue and if available engage
@@ -353,7 +398,10 @@ class Trader_MAB( Trader ):
       self.add_order(self.orderQueue.pop(0))
 
     # Make history
+    # BB & BA
+    self.lastBB = bbTrend
+    self.lastAB = abTrend
     self.priceHistory['bids']['best'].append(bb)
-    self.priceHistory['bids']['worst'].append(bw)
+    # self.priceHistory['bids']['worst'].append(bw)
     self.priceHistory['asks']['best'].append(ab)
-    self.priceHistory['asks']['worst'].append(aw)
+    # self.priceHistory['asks']['worst'].append(aw)
