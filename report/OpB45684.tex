@@ -81,6 +81,18 @@ The algorithm ensures that every sub-trader was tried at least once to collect t
 In carried out experiments the opponents of MAB trader were the same as employed sub-traders. This situation may result in advantageous behaviour of presented trader as it knows the algorithms of competition.
 
 \section{Results}
+The trader is crippled as it cannot interchangably issue Bid and Ask orders as the design of the BSE sauses to cross itself
+line 242:\\
+if self.asks.n_orders > 0 and best_bid >= best_ask:\\
+to:\\
+if self.asks.n_orders > 0 and best_bid >= best_ask and best_ask_tid!=order.tid:\\
+
+and line 253:\\
+if self.bids.n_orders > 0 and best_ask <= best_bid:\\
+to:\\
+if self.bids.n_orders > 0 and best_ask <= best_bid and best_bid_tid!=order.tid:\\
+
+
 One / Multiple in the MArket\\
 Allow short-selling / do not allow\\
 

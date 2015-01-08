@@ -28,6 +28,9 @@ class Trader_MAB( Trader ):
     self.createStats = True
     self.singleStats = True
 
+    # get order to issue
+    self.orderToIssue = None
+
     # Remember your assets
     self.assets = { 'bought':[], 'sold':[] }
     self.maxAssets = 3
@@ -123,23 +126,26 @@ class Trader_MAB( Trader ):
     # NB What follows is **LAZY** -- assumes all orders are quantity=1
     transactionprice = trade['price']
 
-    if self.orders[0].otype == 'Bid':
+    # print self.orders[0].price
+    if order.otype == 'Bid':
       # Just bought so reduce initial Money
 
       # check if I have shorted something buy it back
       if len(self.assets['sold']) != 0:
         # Find the worse price of shortage
-        maximum = min(self.assets['sold'])
+        minimum = min(self.assets['sold'])
         profit = transactionprice + minimum
         # Delete from short list
-        self.assets['sold'].remove( maximum )
+        print "Bing"
+        self.assets['sold'].remove( minimum )
       else:
+        profit = 0
         self.initialMoney -= transactionprice
         #memorise in self.assets to calculate profit later
         self.assets['bought'].append( transactionprice )
       
       
-    elif self.orders[0].otype == 'Ask':
+    elif order.otype == 'Ask':
       if len(self.assets['bought']) != 0: # sell something I bought
         # sell what I have - find the maximum that I paid
         maximum = max(self.assets['bought'])
@@ -148,11 +154,12 @@ class Trader_MAB( Trader ):
         self.assets['bought'].remove( maximum )
       else: # short it
         # sell short - record
+        print "Bang"
         self.assets['sold'].append( -transactionprice )
         profit = -transactionprice
         # there is nothing to do with initial money
     else:
-      sys.exit('FATAL: MAB doesn\'t know .otype %s\n' % self.orders[0].otype)
+      sys.exit('FATAL: MAB doesn\'t know .otype %s\n' % order.otype)
 
     # fill the account and stay with commission
     if self.initialMoney == self.givenCash: # all profit for me
@@ -173,15 +180,13 @@ class Trader_MAB( Trader ):
 
     # Remember about sub-traders
     for traderID in self.traders:
-        self.traders[traderID].bookkeep(trade, order, verbose)
+        self.traders[traderID].del_order(None) # bookkeep(trade, order, verbose)
     # memorise profit
     self.payout = profit
 
 
   # Get order, calculate trading price, and schedule
   def getorder( self, time, countdown, lob ):
-    if countdown < self.panic:
-      self.clearout = True
 
     # Choose sub-algorithm
     def selfChoice(toTry):
@@ -201,6 +206,9 @@ class Trader_MAB( Trader ):
           ucb_values[i] = reward + bonus # Give average earn
         self.currentTraderID = toTry[argmax(ucb_values)]
 
+
+    if countdown < self.panic:
+      self.clearout = True
 
     if len( self.orders ) < 1:
       order = None
@@ -232,6 +240,7 @@ class Trader_MAB( Trader ):
           order = Order(self.tid, externalOrder.otype, externalOrder.price, externalOrder.qty, time)
           break
 
+    self.orders = [order]
     return order
 
 
@@ -252,6 +261,8 @@ class Trader_MAB( Trader ):
     # Remember about sub-traders #self.traders[self.currentTraderID].respond(time, lob, trade, verbose)
     for traderID in self.traders:
       self.traders[traderID].respond(time, lob, trade, verbose)      
+
+    self.orderToIssue = None
 
     # update sub-traders estimates: adapt trader to current market structure
     if trade != None and self.payout != None:
@@ -317,13 +328,15 @@ class Trader_MAB( Trader ):
         # Find top paid price
         p = max(self.assets['bought'])
         o = Order(self.tid, 'Ask', p, 1, time)
-        self.orderQueue.append(o)
+        # self.orderQueue.append(o)
+        self.orderToIssue = o
       # if there is any shorted asset: buy it back
       elif len(self.assets['sold']) > 0:
         # Find top paid price
         p = max(self.assets['sold'])
         o = Order(self.tid, 'Bid', p, 1, time)
-        self.orderQueue.append(o)
+        # self.orderQueue.append(o)
+        self.orderToIssue = o
       # I have nothing: do nothing
       else:
         pass
@@ -346,8 +359,10 @@ class Trader_MAB( Trader ):
           # if asks peaked make an offer
           p = max(self.assets['bought']) # if not working try min
           if bbTrend - self.lastBB > 0 and p >= lob['bids']['best'] :
+            print "Ding Dong"
             o = Order(self.tid, 'Ask', p, 1, time)
-            self.orderQueue.append(o)
+            # self.orderQueue.append(o)
+            self.orderToIssue = o
           else: # wait for peak
             pass
         else: # wait
@@ -363,7 +378,8 @@ class Trader_MAB( Trader ):
           p = abs( max(self.assets['sold']) ) # if not working try min
           if abTrend - self.lastAB < 0 and p <= lob['asks']['best'] :
             o = Order(self.tid, 'Bid', p, 1, time)
-            self.orderQueue.append(o)
+            # self.orderQueue.append(o)
+            self.orderToIssue = o
           else: # wait for peak
             pass
         else: # wait
@@ -373,18 +389,20 @@ class Trader_MAB( Trader ):
       elif action == 'free': # do whatever you want
         # based on what trends better buy or sell
         # if buyers want to pay more and more try to sell
-        if (bbTrend - self.lastBB) >= (self.lastAB - abTrend) and bbTrend>0 :
+        if (bbTrend - self.lastBB) >= (self.lastAB - abTrend) and bbTrend>0 and len(self.assets['bought']) > 0:
           # Sell
           if bbTrend - self.lastBB > 0 :
             o = Order(self.tid, 'Ask', lob['bids']['best'], 1, time)
-            self.orderQueue.append(o)
+            # self.orderQueue.append(o)
+            self.orderToIssue = o
 
         # if seller want to sell for less and less try to buy
         elif (bbTrend - self.lastBB) <= (self.lastAB - abTrend) and abTrend>0:
           # Buy
           if abTrend - self.lastAB < 0 :
             o = Order(self.tid, 'Bid', lob['asks']['best'], 1, time)
-            self.orderQueue.append(o)
+            # self.orderQueue.append(o)
+            self.orderToIssue = o
         else:
           #wait
           pass
@@ -394,8 +412,8 @@ class Trader_MAB( Trader ):
 
 
     # Check for order queue and if available engage
-    if len(self.orders) == 0 and len(self.orderQueue) != 0:
-      self.add_order(self.orderQueue.pop(0))
+    # if len(self.orders) == 0 and len(self.orderQueue) != 0:
+    #   self.add_order(self.orderQueue.pop(0))
 
     # Make history
     # BB & BA
@@ -405,3 +423,8 @@ class Trader_MAB( Trader ):
     # self.priceHistory['bids']['worst'].append(bw)
     self.priceHistory['asks']['best'].append(ab)
     # self.priceHistory['asks']['worst'].append(aw)
+    if self.orderToIssue != None:
+      self.add_order(self.orderToIssue)
+
+    if len(self.assets['sold']) != 0:
+      print len(self.assets['sold'])

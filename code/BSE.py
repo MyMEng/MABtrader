@@ -239,7 +239,7 @@ class Exchange(Orderbook):
                 best_bid = self.bids.best_price
                 best_bid_tid = self.bids.best_tid
                 if order.otype == 'Bid':
-                        if self.asks.n_orders > 0 and best_bid >= best_ask:
+                        if self.asks.n_orders > 0 and best_bid >= best_ask:# and best_ask_tid!=order.tid:
                                 # bid hits the best ask
                                 if verbose: print("Bid hits best ask")
                                 counterparty = best_ask_tid
@@ -250,7 +250,7 @@ class Exchange(Orderbook):
                                 # delete the bid that was the latest order
                                 self.bids.delete_best()
                 elif order.otype == 'Ask':
-                        if self.bids.n_orders > 0 and best_ask <= best_bid:
+                        if self.bids.n_orders > 0 and best_ask <= best_bid:# and best_bid_tid!=order.tid:
                                 # ask hits the best bid
                                 if verbose: print("Ask hits best bid")
                                 # remove the best bid
@@ -1070,6 +1070,7 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
                 # get an order (or None) from a randomly chosen trader
                 tid = list(traders.keys())[random.randint(0, len(traders) - 1)]
                 order = traders[tid].getorder(time, time_left, exchange.publish_lob(time, lob_verbose))
+                # print "oo ", order
 
                 if order != None:
                         # send order to exchange
@@ -1077,6 +1078,8 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, dum
                         if trade != None:
                                 # trade occurred,
                                 # so the counterparties update order lists and blotters
+                                # print "p1 ", traders[trade['party1']].tid
+                                # print "p2", traders[trade['party2']].tid, "\n"
                                 traders[trade['party1']].bookkeep(trade, order, bookkeep_verbose)
                                 traders[trade['party2']].bookkeep(trade, order, bookkeep_verbose)
                                 if dump_each_trade: trade_stats(sess_id, traders, tdump, time, exchange.publish_lob(time, lob_verbose))
