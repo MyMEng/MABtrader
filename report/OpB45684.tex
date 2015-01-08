@@ -27,7 +27,8 @@
 \subtitle{Bristol Stock Exchange extension\\[1em]\today}
 \author{Kacper \textbf{Sokol}---ks1591---45684}
 \institute{Department of Computer Science,\\
-  University of Bristol\\
+  University of Bristol,\\
+  Bristol, BS8 1UB\\
   \email{k.sokol.2011@my.bristol.ac.uk}}
 %
 \maketitle
@@ -43,25 +44,37 @@ which is inspired by \emph{Multi-armed Bandits} approach to \emph{exploration vs
 \section{Introduction}
 Bristol Stock Exchange(BSE) is a simple and minimal simulation of \emph{limit order book}(LOB) financial exchange with single tradable security. In the market any trader can issue an order, where each new order replaces the old one. It also assumes zero latency in communication between the traders and the exchange and that information about newly issued orders is distributed among agents before the next order can be issued.\\
 
-Designed algorithm trades on BSE using sub-traders---it is a wrapper for generic trading algorithm. In this study, used sub-traders are the one contained by default in BSE source code, but this is easily modifiable. Each order is issued with sub-trader considered for given moment as the most profitable. The choice which trader to use is governed by simplistic implementation of \emph{Multi-armed Bandits}(MAB) algorithm.\\
+Designed algorithm trades on BSE using sub-traders---it is a wrapper for generic trading algorithm. In this study, used sub-traders are the one contained by default in BSE source code, but this is easily modifiable. Each order is issued with sub-trader considered for given moment as the most profitable. The choice which trader to use is governed by simplistic implementation of \emph{Multi-armed Bandits}(MABs) algorithm.\\
+Presented here trader differs from implemented in BSE agents as it is a Market-Maker: it trades with its own money and decides what and when to trade. On contrary, BSE own traders are \emph{sales trader} who receive external orders and make profit from the price difference they can make.\\
 
 To the best of my knowledge, presented here approach is first of its kind and has not been described or tested up. The source code of the algorithm is available both: in the \emph{\appendixname} at the end of this paper, and on-line at: \url{https://github.com/So-Cool/MABtrader}.\\
 
 \section{Methodology}
-How to make decision when to buy and sell assets? -> I dont have to worry about selling to low or to high as sub-trader will enforse the minimum rice + possible commision which goes to my pocket\\
+The stock exchange market is highly complex system, which dynamics is governed by supply and demand. Many different traders with wide range of strategies issue orders to trade securities with highest possible margin. The best possible agent should beat the competition by adapting to constantly changing market situation. To address this issue I decided to use Multi-armed Bandits framework with \emph{Upper Confidence Bound}(UCB) approach.\\
 
-The agent is allowed to short-sell and collect up to n=3 assets.\\
-if less than 3 do whatever you want; if reached 3 sell or buy only allowed.\\
+The decision when and what order to issue is based on two concepts: $k-$\texttt{lag} ($10-$\texttt{lag}) of recent \emph{best} and \emph{worst} of \emph{bids} and \emph{asks} on the LOB, and \emph{critical point}. The first one identifies actual trend on the market to decide on the price and type of order to make. The latter identifies approaching market closure---10\% of session time left---to disable buying and short-selling (if allowed) and get rid of all possessed assets.\\
+Chosen approach, does not require complex price analysis mechanism to maximise a profit of a trade as employed sub-traders work is to maximise their commission which in this case flows to Market-Maker's pocket. Used sub-traders while given a price paid for asset will enforce this price as minimal and do their best to maximise profit.\\
+The agent is capable of short-selling and has a predefined cap on number of possessed assets. For presented in this paper experiment it is allowed to collect up to $3$ assets, and both: experiments with enabled and disabled short selling were carried out.\\
 
-The stock exchange market is highly complex system, which dynamics is governed by supply and demand. Many different traders with wide range of strategies issue orders to trade securities with highest possible margin. The best possible agent should beat the competition by adapting to the market situation
+\subsection{Order issuing}
+Order issuing in presented trader is based on well known toll for time-series analysis called $k-$\texttt{lag}: it inspects the difference between current and $k$ most recent prices at the market. It is used by the trader to calculate trends of \emph{best} and \emph{worst} price trends of the LOB's \emph{bids} and \emph{asks}.\\
+Blah blah blah about how it decides to buy and sell...\\
+
+The task of working on margins is left to employed sub-traders. Each of them is sales trader and its task is to work out best possible margin on given price. This allows the agent to issue order with at least paid price (or more depending on market situation) and collect overhead earn by sub-trader if order is executed.\\
+For the experiments presented below if the robot reaches its assets cap it is only allowed to sell or buy-back (if previously short-sold). If the limit is not reached the robot is allowed to decide whether to buy(-back) or (short-)sell.\\
+In the later case it makes a decision based on blah blah blah...
+
+\subsection{Sub-trader choosing with MAB}
+The design of discussed trader is inspired by gaining in popularity in recent years framework for testing hypothesis. Multi-armed bandits are taking place of \emph{A-B testing} as they allow for dynamic change of environmental set-up and not only data collection for later analysis.\\
+The main concept behind them is simply row of slot machines each yielding some reward distributed according to some unknown distribution. Once the armed was pulled the machine gives us reward which then can be used to better estimate the distribution underlying this reward. The more we play given machine the better we understand its reward mechanism.\\
+The main problem with this setting is balancing \emph{exploration} and \emph{exploitation} to achieve optimal long term reward. The exploration is roughly speaking using under-discovered machines to learn more about the environment and exploitation is using current knowledge to play machine considered as most rewarding to increase overall reward.\\
+Multi-armed Bandits is well documented by~\cite{berry+firstedt, gittins+glazebrook+weber} problem with some simple tackling this vast problem. MABs are well known technique in on-line adversing and are used to maximise the click-through rate by arranging ads in best suited places for given customer by companies such as Google~\cite{AYPSze12, ASMB:ASMB874}, LinkedIn~\cite{Tang:2013:AAF:2505515.2514700}, Microsoft~\cite{graepel2010web}, Yahoo~\cite{Li:2010:CAP:1772690.1772758}.\\
+
+In trader context I adapted MAB technique where traders are arms in the machine; reward is the profit made by trader on given order; and exploration vs. exploitation is discovering potential associated with each trader in current market.\\
+The approach to solve this MAB problem is \emph{Upper Confidence Bound}(UCB)~\cite{white2012bandit} which is simple yet powerful technique to find optimal solution. Furthermore, it prevents ``\emph{sticking}'' i.e.\ using arm (trader) that is currently best but too little is known about other arms(traders) to  have strong evidence of its superiority.\\
 
 To achieve this flexibility --- It is hard to write if and elses defining the model so that every possibility is covered\\
 chece probabiistic approach\\
-
-
-
-
-Why I used MABs
 
 Write how I used the MAB approach\\
   how I wraped other algorithms\\
@@ -74,33 +87,33 @@ if current-sub-algorithm algorithm starts to loos it will be replaced iwth other
 
 But remember about exploration: mayb eother algorithm is better than our curretn cauze situation in the market has changed
 
+Write that the algorithm is based on contained in the code hence the best possible performance it can get and defeat all is when competin with all available soultions at the amrket.\\
 
+\section{Results}
+One / Multiple in the MArket\\
+Allow short-selling / do not allow\\
+
+Give pie-chart of algo uses.\\
+Give the average earnings and roughly compare.\\
+try LONGER SESSIONS to allow it to learn\\
 mean\\
 std\\
 box plot\\
 2 x tests\\
-
 Kruskal-Wallis Test\\
 robust-rank corelation test
 
-
-\section{Results}
-Give pie-chart of algo uses.\\
-
-Give the average earnings and roughly compare.
-
-try LONGER SESSIONS to allow it to learn
-
 \section{Discussion}
+Presented in this paper solution discusses novel---probabilistic---approach to trading agents inspired by Multi-armed Bandits. As stock exchange markets contains vast number of independent and self-centred agents it is important to ensure that produced trader can quickly adapt to its environment.\\
+The key strength of my solution is modularity of used sub-traders. It is possible to use relatively large number of them, each adapted to different market structure. Without explicitly specifying rules governing use of particular trader, UCB will try each solution and based on earned amount it will converge to most profitable one. In case of sudden market shift it will try another traders to check for improvements of current strategy.\\
 
-Give detailed statistical analysis of results and give verdict.
+Longer sessions needed to fully use potential of MAB.\\
+Give detailed statistical analysis of results and give verdict blah blah blah...\\
 
 \section{Conclusion}
-Write that the algorithm is based on contained in the code hence the best possible performance it can get and defeat all is when competin with all available soultions at the amrket.\\
+Used approach is novel and the paper presents only rough framework how to use it. There is still lot of work to be done and research to be carried out to understand use of Multi-armed Bandits in trading algorithms.\\
 
-What research do I suggest.
-
-
+This study engages only use of predefined in BSE traders. Presented here framework can be easily generalised to use more complex and diversified sub-traders covering wider range of possible market situations. The next viable goal extending this study would be to employ more sub-traders and check the performance of proposed solution.
 
 
 \vfill

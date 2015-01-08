@@ -17,7 +17,10 @@ class Trader_MAB( Trader ):
     # Predefine initial parameters
     self.hisLen = 10
     self.norm = float(1000 - 1) # based on max and min price on market
+    self.panic = 0.1
     ##############################
+
+    self.slearout = False
 
     self.payout = None # payout for current trade
     self.createStats = True
@@ -29,7 +32,7 @@ class Trader_MAB( Trader ):
     self.orderQueue = []
 
     # Remember recent price history
-    self.priceHistory = { 'bids':{'best':deque(maxlen=hisLen), 'worst':deque(maxlen=hisLen)}, 'asks':{'best':deque(maxlen=hisLen), 'worst':deque(maxlen=hisLen)} }
+    self.priceHistory = { 'bids':{'best':deque(maxlen=self.hisLen), 'worst':deque(maxlen=self.hisLen)}, 'asks':{'best':deque(maxlen=self.hisLen), 'worst':deque(maxlen=self.hisLen)} }
 
     self.statsFilename = "MAB_stats.csv"
     self.statsFile = isfile(self.statsFilename) #? if concurrent run first round is lost
@@ -175,6 +178,8 @@ class Trader_MAB( Trader ):
 
   # Get order, calculate trading price, and schedule
   def getorder( self, time, countdown, lob ):
+    if countdown < self.panic:
+      self.payout = True
 
     # Choose sub-algorithm
     def selfChoice(toTry):
@@ -264,21 +269,35 @@ class Trader_MAB( Trader ):
 
     # Check for current prices on the market to decide
     bb = lob['bids']['best']
+    if bb == None:
+      bb=0
     bw = lob['bids']['worst']
+    if bw == None:
+      bw=0
     ab = lob['asks']['best']
+    if ab == None:
+      ab=0
     aw = lob['asks']['worst']
+    if aw == None:
+      aw=0
 
-    # Get lags
-    bbFluc = lag( bb, list(self.priceHistory['bids']['best']) )
-    bwFluc = lag( bw, list(self.priceHistory['bids']['worst']) )
-    abFluc = lag( ab, list(self.priceHistory['asks']['best']) )
-    awFluc = lag( aw, list(self.priceHistory['asks']['worst']) )
+    # Get lags # Get trend
+    if bb != None and list(self.priceHistory['bids']['best']) != []:
+      bbFluc = lag( bb, list(self.priceHistory['bids']['best']) )
+      bbTrend = sum(bbFluc)
+    if bw != None and list(self.priceHistory['bids']['worst']) != []:
+      bwFluc = lag( bw, list(self.priceHistory['bids']['worst']) )
+      bwTrend = sum(bwFluc)
+    if ab != None and list(self.priceHistory['asks']['best']) != []:
+      abFluc = lag( ab, list(self.priceHistory['asks']['best']) )
+      abTrend = sum(abFluc)
+    if aw != None and list(self.priceHistory['asks']['worst']) != []:
+      awFluc = lag( aw, list(self.priceHistory['asks']['worst']) )
+      awTrend = sum(awFluc)
 
-    # Get trend
-    bbTrend = sum(bbFluc)
-    bwTrend = sum(bwFluc)
-    abTrend = sum(abFluc)
-    awTrend = sum(awFluc)
+    
+    
+    # if self.payout - start clearing out
 
 
 
@@ -292,7 +311,7 @@ class Trader_MAB( Trader ):
     
     if sell: # sell
       # sell something if price has improved
-      if 
+      # if 
       # append to self.queue
       # or wait to sell - but not too long
       pass
