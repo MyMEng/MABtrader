@@ -332,7 +332,7 @@ class Trader_MAB( Trader ):
 
 
     # Check if clear-out
-    if False:#self.clearout:
+    if self.clearout:
       # get rid of all you have
       # if there is any bought asset: sell it
       if len(self.assets['bought']) > 0:
@@ -402,7 +402,7 @@ class Trader_MAB( Trader ):
       elif action == 'free': # do whatever you want
         # based on what trends better buy or sell
         # if buyers want to pay more and more try to sell
-        if (bbTrend - self.lastBB) >= (self.lastAB - abTrend) and bbTrend>0:# and len(self.assets['bought']) > 0:
+        if (bbTrend - self.lastBB) >= (self.lastAB - abTrend) and bbTrend>0 and len(self.assets['bought']) > 0:
           # Sell
           if bbTrend - self.lastBB > 0 :
             currentPrice = lob['asks']['best']
