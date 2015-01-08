@@ -142,9 +142,11 @@ class Trader_MAB( Trader ):
         self.assets['sold'].remove( minimum )
       else:
         profit = 0
-        self.initialMoney -= transactionprice
+        self.balance -= transactionprice
         #memorise in self.assets to calculate profit later
         self.assets['bought'].append( transactionprice )
+
+      print "Bought: ", order.price
       
       
     elif order.otype == 'Ask':
@@ -152,6 +154,8 @@ class Trader_MAB( Trader ):
         # sell what I have - find the maximum that I paid
         maximum = max(self.assets['bought'])
         profit = transactionprice-maximum
+        self.balance += transactionprice
+        self.balance += profit
         # Record
         self.assets['bought'].remove( maximum )
       else: # short it
@@ -160,22 +164,23 @@ class Trader_MAB( Trader ):
         self.assets['sold'].append( -transactionprice )
         profit = -transactionprice
         # there is nothing to do with initial money
+      print "sold: ", order.price
     else:
       sys.exit('FATAL: MAB doesn\'t know .otype %s\n' % order.otype)
 
     # fill the account and stay with commission
-    if self.initialMoney == self.givenCash: # all profit for me
-      self.balance += profit
-    elif self.initialMoney > self.givenCash: # to much in bank-payout
-      over = self.givenCash - self.initialMoney
-      self.initialMoney -= over
-      profit += over
-      self.balance +=  profit
-    elif self.initialMoney < self.givenCash:
-      under = self.givenCash - self.initialMoney
-      self.initialMoney += under
-      profit -= under
-      self.balance += profit
+    # if self.initialMoney == self.givenCash: # all profit for me
+    #   self.balance += profit
+    # elif self.initialMoney > self.givenCash: # to much in bank-payout
+    #   over = self.givenCash - self.initialMoney
+    #   self.initialMoney -= over
+    #   profit += over
+    #   self.balance +=  profit
+    # elif self.initialMoney < self.givenCash:
+    #   under = self.givenCash - self.initialMoney
+    #   self.initialMoney += under
+    #   profit -= under
+    #   self.balance += profit
 
     if verbose: print('%s profit=%d balance=%d ' % (outstr, profit, self.balance))
     self.del_order(order) # delete the order
@@ -377,8 +382,6 @@ class Trader_MAB( Trader ):
 
 
       elif action == 'buy': # buy
-
-
         # if downward trajectory in price act
         if abTrend<0:
           # if asks peaked make an offer
@@ -399,7 +402,11 @@ class Trader_MAB( Trader ):
         if (bbTrend - self.lastBB) >= (self.lastAB - abTrend) and bbTrend>0 and len(self.assets['bought']) > 0:
           # Sell
           if bbTrend - self.lastBB > 0 :
-            o = Order(self.tid, 'Ask', lob['bids']['best'], 1, time)
+            currentPrice = lob['asks']['best']
+            if currentPrice != None:
+              o = Order(self.tid, 'Ask', currentPrice, 1, time)
+            else:
+              o=None
             # self.orderQueue.append(o)
             self.orderToIssue = o
 
@@ -407,7 +414,11 @@ class Trader_MAB( Trader ):
         elif (bbTrend - self.lastBB) <= (self.lastAB - abTrend) and abTrend>0:
           # Buy
           if abTrend - self.lastAB < 0 :
-            o = Order(self.tid, 'Bid', lob['asks']['best'], 1, time)
+            currentPrice = lob['bids']['best']
+            if currentPrice != None:
+              o = Order(self.tid, 'Bid', currentPrice, 1, time)
+            else:
+              o = None
             # self.orderQueue.append(o)
             self.orderToIssue = o
         else:
@@ -433,5 +444,5 @@ class Trader_MAB( Trader ):
     if self.orderToIssue != None:
       self.add_order(self.orderToIssue)
 
-    if len(self.assets['sold']) != 0:
-      print len(self.assets['sold'])
+    # if len(self.assets['sold']) != 0:
+    #   print len(self.assets['sold'])
