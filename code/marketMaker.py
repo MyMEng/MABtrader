@@ -30,6 +30,9 @@ class Trader_MAB( Trader ):
 
     self.transactionInProgress = None
 
+    self.fuseB = False
+    self.fuseS = False
+
     # get order to issue
     self.orderToIssue = None
 
@@ -344,7 +347,7 @@ class Trader_MAB( Trader ):
       # if there is any shorted asset: buy it back
       elif len(self.assets['sold']) > 0:
         # Find top paid price
-        p = max(self.assets['sold'])
+        p = abs(max(self.assets['sold']))
         o = Order(self.tid, 'Bid', p, 1, time)
         # self.orderQueue.append(o)
         self.orderToIssue = o
@@ -370,6 +373,7 @@ class Trader_MAB( Trader ):
       # print self.lastAB - abTrend, "\n"
       
       if action == 'sell': # sell
+        if self.fuseS == False: self.transactionInProgress = None
         # if upward trajectory in price act
         if bbTrend>0:
           # if asks peaked make an offer
@@ -377,6 +381,8 @@ class Trader_MAB( Trader ):
           p = max( p, lob['asks']['best'] )
           if bbTrend - self.lastBB > 0 and p >= lob['asks']['best'] and p != None :
             o = Order(self.tid, 'Ask', p, 1, time)
+            self.fuseS = True
+            self.transactionInProgress = 'sell'
             # self.orderQueue.append(o)
             self.orderToIssue = o
           else: # wait for peak
@@ -386,6 +392,7 @@ class Trader_MAB( Trader ):
 
 
       elif action == 'buy': # buy
+        if self.fuseB == False: self.transactionInProgress = None
         # if downward trajectory in price act
         if abTrend<0:
           # if asks peaked make an offer
@@ -393,6 +400,8 @@ class Trader_MAB( Trader ):
           p = min(p, lob['bids']['best'])
           if abTrend - self.lastAB < 0 and p <= lob['bids']['best'] and p != None :
             o = Order(self.tid, 'Bid', p, 1, time)
+            self.fuseB = True
+            self.transactionInProgress = 'buy'
             # self.orderQueue.append(o)
             self.orderToIssue = o
           else: # wait for peak
