@@ -77,15 +77,15 @@ The main concept behind MAB is simply a row of slot machines each yielding some 
 The main problem behind this setting is balancing the \emph{exploration} and \emph{exploitation} to achieve optimal cumulative long term reward. The \emph{exploration} of the environment in this simplistic scenario is playing under-discovered arms to learn more about their distributions, and \emph{exploitation} is playing the arm estimated to be the best according to current knowledge to quickly gain reward.\\
 MAB is well documented challenge discussed in details by~\cite{berry+firstedt,gittins+glazebrook+weber}. Techniques solving posed by MAB problem are well known in on-line adversing world where they are used by companies such as Google~\cite{AYPSze12,ASMB:ASMB874}, LinkedIn~\cite{Tang:2013:AAF:2505515.2514700}, Microsoft~\cite{graepel2010web}, and Yahoo~\cite{Li:2010:CAP:1772690.1772758} to maximise the click-through rate by rearranging advertisements displayed on a web-page to be the best suited for given user.\\
 
-In the trader context I adapted MAB technique where traders are arms in the machine; reward is the profit made by trader on given order; and exploration vs. exploitation is discovering potential associated with each trader in current market.\\
-The approach to solve this MAB problem is \emph{Upper Confidence Bound}(UCB)~\cite{white2012bandit} which is simple yet powerful technique to find optimal solution. Furthermore, it prevents ``\emph{sticking}'' i.e.\ using arm (trader) that is currently best but too little is known about other arms(traders) to  have strong evidence of its superiority.\\
+To adopt MAB to MarketMaker trading algorithm I used the following analogies: the sub-traders are arms in the machine; the profit made by sub-trader on given order is the reward of an arm; and discovering profit associated with each sub-trader in current market is addressing exploration vs.\ exploitation problem.\\
+I chose to solve this MAB trading problem with \emph{Upper Confidence Bound}(UCB)~\cite{white2012bandit} algorithm which is simple yet powerful technique to find optimal solution with least possible exploration. Furthermore, it prevents ``\emph{sticking}'' i.e.\ using arm (sub-trader) that is currently considered best but too little is known about other arms (sub-traders) to have strong evidence of its superiority.\\
 
-Application of MAB in trader creates possibility of probabilistic choices based on current market structure. It does not require complex Bayesian approach: collecting enormous amount of data would be impractical. Furthermore it does not require to construct complex decision if-else model analysing current market structure to choose appropriate to use trader. Both this feature of chosen solution give great flexibility and adaptability.\\
+Applying MAB algorithm in trading problem allows to probabilistic choose the best sub-trader based on current market structure. Furthermore, it does not require complex Bayesian statistics: collecting enormous amount of data in this scenario would be impractical. It also does not require to construct complex decision if-else model to react on changes taking place in the market structure. All these feature of chosen solution give MarketMaker great flexibility and adaptability potential.\\
 
-Presented trader is a simple wrapper for traders compatible with BSE. It calls appropriate methods at each of them updating their internal variables and issuing them orders. Once single trader is chosen for given round its order is collected and submitted to the exchange as presented trader's order.\\
-The algorithm ensures that every sub-trader was tried at least once to collect the reward (earnings on trade) and be able to calculate its potential in the market. Then by calculating UCB on rewards plus the uncertainty parameter of solution it chooses the best solution for current market. The uncertainty parameter ensures exploration of other solutions outside of the best scoring and acts a a changing lever if current sub-trader begins to under-perform in comparison with other available sub-traders until the reward is maximised again.\\
+The trader was designed to be a wrapper for trading algorithms compatible with BSE. It calls appropriate methods for each of its sub-traders to update their internal variables and issue them orders. Once a single trader is chosen for given round its order is collected and submitted to the exchange as MM's order.\\
+The algorithm ensures that every sub-trader was tried at least once to collect the reward (profit on trade) information and be able to calculate its potential during the next order issuing process. By calculating UCB on rewards plus the uncertainty parameter of solution it chooses the best sub-trader for given situation. The uncertainty parameter ensures exploration of solutions considered for the moment as sub-optimal and acts as a changing lever if current sub-trader begins to under-perform in comparison with other available sub-traders until the reward is maximised.\\
 
-In carried out experiments the opponents of MAB trader were the same as employed sub-traders. This situation may result in advantageous behaviour of presented trader as it knows the algorithms of competition.
+In carried out experiments the opponents of MAB trader were the same as employed sub-traders. This situation places a strong assumption that MM knows the algorithms used by its competitors.
 
 \section{Results}
 % One / Multiple in the MArket # try LONGER SESSIONS to allow it to learn
@@ -132,7 +132,10 @@ Presented above box-plot has one more striking feature: it suggest that \texttt{
   \caption{Results of Pairwise Wilcoxon-Mann-Whitney U Test.\label{tab:wilcox}}
 \end{table}
 
-Above results confirm that MAB performs significantly worse than all other algorithms: $p-$value is significantly smaller than significance level. Furthermore $p-$value for the \texttt{GWY}-\texttt{ZIP} pair confirms our observation that profits of both algorithm are statistically indistinguishable: $0.28$ $p-$value is larger than fixed $0.05$ significance level.\\
+Above results confirm that MAB performs significantly worse than all other algorithms: $p-$value is significantly smaller than significance level. Furthermore $p-$value for the \texttt{GWY}-\texttt{ZIP} pair confirms our observation that profits of both algorithm are statistically indistinguishable: $0.28$ $p-$value is larger than fixed $0.05$ significance level. The test suggests the following traders order---best to worst:\\
+$$
+\mathtt{GWY} = \mathtt{ZIP} > \mathtt{SHVR} > \mathtt{ZIC} > \mathtt{MAB}
+$$
 
 \begin{figure}[ht]
   \centering
@@ -145,14 +148,19 @@ Finally, \emph{Figure~\ref{fig:MABalgo}} above, indicates the average number of 
 
 
 \section{Discussion}
-Presented in this paper solution discusses novel---probabilistic---approach to trading agents inspired by Multi-armed Bandits. As stock exchange markets contains vast number of independent and self-centred agents it is important to ensure that produced trader can quickly adapt to its environment.\\
-The key strength of my solution is modularity of used sub-traders. It is possible to use relatively large number of them, each adapted to different market structure. Without explicitly specifying rules governing use of particular trader, UCB will try each solution and based on earned amount it will converge to most profitable one. In case of sudden market shift it will try another traders to check for improvements of current strategy.\\
+Presented in this paper solution is based on well known price trend analysis and relatively novel probabilistic approach to trading agents inspired by Multi-armed Bandits. As stock exchange markets contains vast number of independent and self-centred agents hence it is important to ensure that produced trader can quickly adapt to the environment it is placed in.\\
+The key strength of my solution is simple yet effective price change detection mechanism and modularity of used sub-traders. It is possible to use relatively large number of them, each adapted to different market structure. Without explicitly specifying rules governing use of particular sub-trader, UCB will try each solution and based on collected profit it will converge to most profitable one. In case of sudden market shift the algorithm will automatically re-explore sub-traders' profit to check for possible improvements of current strategy.\\
 
-Based on presented above statistical analysis designed algorithm performs relatively bad in comparison with all other algorithms used in experiment. It only detects a few possibilities to earn money (\textbf{4.75} trades per session). Furthermore, the average number of trades made per sessions undermines the concept of using Multi-armed Bandits as sub-trader choosing mechanisms. Almost uniform sub-traders use indicates that full potential of MAB is not used. The longer sessions and more trading opportunities is needed to allow MAB algorithm to learn and use the best strategy for current market structure.\\
+Based on presented above statistical analysis MAB MarketMaker performs relatively poor in comparison with all other algorithms used in experiment: it earns on average 77 units less than second worst trader. It detects only a few possibilities to earn money---\textbf{4.75} trades per session. This relatively low average number of trades per sessions undermines the concept of using Multi-armed Bandits as a mechanism for choosing sub-trader. Almost uniform sub-traders engagement (\emph{Figure~\ref{fig:MABalgo}}) indicates that full potential of MAB is not used as the algorithm did not have enough opportunity to converge to the best solution.
 
 
 \section{Conclusion}
+Presented here approach to MarketMaker traders uses 
 Used approach is novel and the paper presents only rough framework how to use it. There is still lot of work to be done and research to be carried out to understand use of Multi-armed Bandits in trading algorithms.\\
+
+The longer sessions and more trading opportunities is needed to allow MAB algorithm to learn and use the best strategy for current market structure.\\
+
+Inspect why ZIP and GVY perform similary.\\
 
 This study engages only use of predefined in BSE traders. Presented here framework can be easily generalised to use more complex and diversified sub-traders covering wider range of possible market situations. The next viable goal extending this study would be to employ more sub-traders and check the performance of proposed solution.\\
 Furthermore, another study is needed to check the behaviour of trader when it can change its status from selling to buying without making a transaction. Enabling multiple orders and short-selling might also be worth inspecting. Also interesting should be deploying multiple MAB MArketMakers and see how they interact.\\
