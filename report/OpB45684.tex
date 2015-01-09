@@ -5,6 +5,8 @@
 \usepackage{color}
 \usepackage{setspace}
 
+\newcommand{\ts}{\textsuperscript}
+
 \definecolor{Code}{rgb}{0,0,0}
 \definecolor{Decorators}{rgb}{0.5,0.5,0.5}
 \definecolor{Numbers}{rgb}{0.5,0,0}
@@ -56,13 +58,17 @@ The decision when and what order to issue is based on two concepts: $k-$\texttt{
 Chosen approach, does not require complex price analysis mechanism to maximise a profit of a trade as employed sub-traders work is to maximise their commission which in this case flows to Market-Maker's pocket. Used sub-traders while given a price paid for asset will enforce this price as minimal and do their best to maximise profit.\\
 The agent is capable of short-selling and has a predefined cap on number of possessed assets. For presented in this paper experiment it is allowed to collect up to $3$ assets, and both: experiments with enabled and disabled short selling were carried out.\\
 
+To test designed \emph{MarketMaker} \textbf{22751} trading round were carried out each consisting of 33 traders: 16 buyers and 16 sellers of types Giveaway, Shaver, ZIC, and ZIP with the ratio of the four types of traders being systematically varied across all possible non-zero values with 50 independent trials for each specification ratio. The one additional trader to this compilation was designed MAB MarketMaker.
+
 \subsection{Order issuing}
-Order issuing in presented trader is based on well known toll for time-series analysis called $k-$\texttt{lag}: it inspects the difference between current and $k$ most recent prices at the market. It is used by the trader to calculate trends of \emph{best} and \emph{worst} price trends of the LOB's \emph{bids} and \emph{asks}.\\
-Blah blah blah about how it decides to buy and sell...\\
+Order issuing in presented trader is based on well known tool for time-series analysis called $k-$\texttt{lag}: it inspects the difference between current and $k$\ts{th} most recent prices at the market. It is used by the trader to calculate \emph{best} price trend of the LOB's \emph{bids} and \emph{asks}. Until the corresponding trend was rising (falling) the order was not issued. Once the trend has faltered the agent started making and offers: it bought assets based on minimum price of recent best bids and its sell prices, and sold assets based on maximum of best ask and its buy price.\\
 
 The task of working on margins is left to employed sub-traders. Each of them is sales trader and its task is to work out best possible margin on given price. This allows the agent to issue order with at least paid price (or more depending on market situation) and collect overhead earn by sub-trader if order is executed.\\
-For the experiments presented below if the robot reaches its assets cap it is only allowed to sell or buy-back (if previously short-sold). If the limit is not reached the robot is allowed to decide whether to buy(-back) or (short-)sell.\\
-In the later case it makes a decision based on blah blah blah...
+For the experiments presented below if the robot reaches its assets cap it is only allowed to sell or buy-back (if previously short-sold). If the limit is not reached the robot is allowed to decide whether to buy(-back) or (short-)sell based on speed of change in price trend.\\
+
+The robot is capable of short-selling but due to BSE design it was disabled for the experiments. The main issue was that once the trader issued a \emph{bid} or \emph{ask} it had to continue issuing this type of order until it offer was crossed by other trader. Otherwise there is a possibility of crossing one's own offer or other robot. Hence, without substantial changes to BSE design interchangeable orders could not be issued.\\
+
+When the end of trading session is approaching the the trader clears all its assets. If there exist short-sold items it will buy them back; if it holds any asset it will sell it; if it does not posses anything buying and selling will be disabled.
 
 \subsection{Sub-trader choosing with MAB}
 The design of discussed trader is inspired by gaining in popularity in recent years framework for testing hypothesis. Multi-armed bandits are taking place of \emph{A-B testing} as they allow for dynamic change of environmental set-up and not only data collection for later analysis.\\
@@ -95,6 +101,7 @@ if self.bids.n_orders > 0 and best_ask <= best_bid and best_bid_tid!=order.tid:\
 Easly adaptable ot multible orders / short selling / not like BSE. Hence limitaion to 1 order first buy than wait to sell.
 
 
+average trades per game\\
 One / Multiple in the MArket\\
 Allow short-selling / do not allow\\
 
