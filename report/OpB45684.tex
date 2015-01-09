@@ -5,7 +5,10 @@
 \usepackage{color}
 \usepackage{setspace}
 
-\newcommand{\ts}{\textsuperscript}
+\usepackage{graphicx}
+
+% \newcommand{\ts}{\textsuperscript}
+% \usepackage{minted}
 
 \definecolor{Code}{rgb}{0,0,0}
 \definecolor{Decorators}{rgb}{0.5,0.5,0.5}
@@ -20,8 +23,6 @@
 \definecolor{FunctionName}{rgb}{0,0,0}
 \definecolor{Operators}{rgb}{0,0,0}
 \definecolor{Background}{rgb}{0.98,0.98,0.98}
-
-\usepackage{minted}
 
 
 \begin{document}
@@ -49,14 +50,14 @@ Bristol Stock Exchange(BSE) is a simple and minimal simulation of \emph{limit or
 Designed algorithm trades on BSE using sub-traders---it is a wrapper for generic trading algorithm. In this study, used sub-traders are the one contained by default in BSE source code, but this is easily modifiable. Each order is issued with sub-trader considered for given moment as the most profitable. The choice which trader to use is governed by simplistic implementation of \emph{Multi-armed Bandits}(MABs) algorithm.\\
 Presented here trader differs from implemented in BSE agents as it is a Market-Maker: it trades with its own money and decides what and when to trade. On contrary, BSE own traders are \emph{sales trader} who receive external orders and make profit from the price difference they can make.\\
 
-To the best of my knowledge, presented here approach is first of its kind and has not been described or tested up. The source code of the algorithm is available both: in the \emph{\appendixname} at the end of this paper, and on-line at: \url{https://github.com/So-Cool/MABtrader}.\\
+To the best of my knowledge, presented here approach is first of its kind and has not been described or tested up. The source code of the algorithm is available both: in the \emph{\appendixname} at the end of this paper (\emph{Listing~\ref{lst:MABmm}}), and on-line at: \url{https://github.com/So-Cool/MABtrader}.\\
 
 \section{Methodology}
 The stock exchange market is highly complex system, which dynamics is governed by supply and demand. Many different traders with wide range of strategies issue orders to trade securities with highest possible margin. The best possible agent should beat the competition by adapting to constantly changing market situation. To address this issue I decided to use Multi-armed Bandits framework with \emph{Upper Confidence Bound}(UCB) approach.\\
 
 The decision when and what order to issue is based on two concepts: $k-$\texttt{lag} ($10-$\texttt{lag}) of recent \emph{best} and \emph{worst} of \emph{bids} and \emph{asks} on the LOB, and \emph{critical point}. The first one identifies actual trend on the market to decide on the price and type of order to make. The latter identifies approaching market closure---10\% of session time left---to disable buying and short-selling (if allowed) and get rid of all possessed assets.\\
 Chosen approach, does not require complex price analysis mechanism to maximise a profit of a trade as employed sub-traders work is to maximise their commission which in this case flows to Market-Maker's pocket. Used sub-traders while given a price paid for asset will enforce this price as minimal and do their best to maximise profit.\\
-The agent is capable of short-selling and has a predefined cap on number of possessed assets. For presented in this paper experiment it is allowed to collect up to $3$ assets, and both: experiments with enabled and disabled short selling were carried out.\\
+The agent is capable of short-selling and has a predefined cap on number of possessed assets. For presented in this paper experiment it is allowed to collect up to $1$ assets, and both: experiments with enabled and disabled short selling were carried out.\\
 
 To test designed \emph{MarketMaker} \textbf{22751} trading round were carried out each consisting of 33 traders: 16 buyers and 16 sellers of types Giveaway, Shaver, ZIC, and ZIP with the ratio of the four types of traders being systematically varied across all possible non-zero values with 50 independent trials for each specification ratio. The one additional trader to this compilation was designed MAB MarketMaker.
 
@@ -87,31 +88,54 @@ The algorithm ensures that every sub-trader was tried at least once to collect t
 In carried out experiments the opponents of MAB trader were the same as employed sub-traders. This situation may result in advantageous behaviour of presented trader as it knows the algorithms of competition.
 
 \section{Results}
-The trader is crippled as it cannot interchangably issue Bid and Ask orders as the design of the BSE sauses to cross itself
-line 242:\\
-if self.asks.n_orders > 0 and best_bid >= best_ask:\\
-to:\\
-if self.asks.n_orders > 0 and best_bid >= best_ask and best_ask_tid!=order.tid:\\
+% One / Multiple in the MArket # try LONGER SESSIONS to allow it to learn
 
-and line 253:\\
-if self.bids.n_orders > 0 and best_ask <= best_bid:\\
-to:\\
-if self.bids.n_orders > 0 and best_ask <= best_bid and best_bid_tid!=order.tid:\\
+\begin{table}[ht]
+  \centering
+  \begin{tabular}{ p{5em} | p{5em}  p{5em}  p{5em} }
+    name & mean & median & standard deviation \\
+    \hline
+    GWY  & $130.0$ &$ 130.0$ &$ 24.4$ \\
+    MAB  & $12.7 $& $16.0 $& $37.9$ \\
+    SHVR & $112.1$& $112.0 $& $13.2$\\
+    ZIC  & $89.6 $& $87.0 $& $16.0$\\
+    ZIP  & $130.3$ &$ 129.8$ & $12.2$
+  \end{tabular}
+  \vspace*{1em}
+  \caption{Basic statistics for traders.\label{tab:stats}}
+\end{table}
 
-Easly adaptable ot multible orders / short selling / not like BSE. Hence limitaion to 1 order first buy than wait to sell.
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=.7\textwidth]{fig/box.pdf}
+  \caption{Box-plot of profits for all traders.\label{fig:box}}
+\end{figure}
+
+The negative profit visible for MAB traders is due to assets that were bought and couldn't be sold by the end of market session.\\
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=.5\textwidth]{fig/pie.png}
+  \caption{Sub-traders used by MAB MArketMaker.\label{fig:MABalgo}}
+\end{figure}
+
+\begin{table}[ht]
+  \centering
+  \begin{tabular}{ p{5em} | p{5em} p{5em} p{5em} p{5em} }
+         &GWY    &MAB    &SHVR   &ZIC   \\
+    \hline
+    MAB  &$<2e-16 $&$-      $&$-      $&$-     $\\
+    SHVR &$<2e-16 $&$<2e-16 $&$-      $&$-     $\\
+    ZIC  &$<2e-16 $&$<2e-16 $&$<2e-16 $&$-     $\\
+    ZIP  &$0.28   $&$<2e-16 $&$<2e-16 $&$<2e-16$
+  \end{tabular}
+  \vspace*{1em}
+  \caption{Results of Wilcoxon-Mann-Whitney U Test.\label{tab:wilcox}}
+\end{table}
+
+Average MAB trades per game: \textbf{4.78}\\
 
 
-average trades per game\\
-One / Multiple in the MArket\\
-Allow short-selling / do not allow\\
-
-Give pie-chart of algo uses.\\
-Give the average earnings and roughly compare.\\
-try LONGER SESSIONS to allow it to learn\\
-mean\\
-std\\
-box plot\\
-2 x tests\\
 Kruskal-Wallis Test\\
 robust-rank corelation test
 
@@ -119,13 +143,14 @@ robust-rank corelation test
 Presented in this paper solution discusses novel---probabilistic---approach to trading agents inspired by Multi-armed Bandits. As stock exchange markets contains vast number of independent and self-centred agents it is important to ensure that produced trader can quickly adapt to its environment.\\
 The key strength of my solution is modularity of used sub-traders. It is possible to use relatively large number of them, each adapted to different market structure. Without explicitly specifying rules governing use of particular trader, UCB will try each solution and based on earned amount it will converge to most profitable one. In case of sudden market shift it will try another traders to check for improvements of current strategy.\\
 
-Longer sessions needed to fully use potential of MAB.\\
-Give detailed statistical analysis of results and give verdict blah blah blah...\\
+Based on presented above statistical analysis designed algorithm performs relatively bad in comparison with all other algorithms used in experiment. It only detects a few possibilities to earn money (\textbf{4.75} trades per session). Furthermore, the average number of trades made per sessions undermines the concept of using Multi-armed Bandits as sub-trader choosing mechanisms. Almost uniform sub-traders use indicates that full potential of MAB is not used. The longer sessions and more trading opportunities is needed to allow MAB algorithm to learn and use the best strategy for current market structure.\\
+
 
 \section{Conclusion}
 Used approach is novel and the paper presents only rough framework how to use it. There is still lot of work to be done and research to be carried out to understand use of Multi-armed Bandits in trading algorithms.\\
 
 This study engages only use of predefined in BSE traders. Presented here framework can be easily generalised to use more complex and diversified sub-traders covering wider range of possible market situations. The next viable goal extending this study would be to employ more sub-traders and check the performance of proposed solution.\\
+Furthermore, another study is needed to check the behaviour of trader when it can change its status from selling to buying without making a transaction. Enabling multiple orders and short-selling might also be worth inspecting. Also interesting should be deploying multiple MAB MArketMakers and see how they interact.\\
 Also another study is needed inspecting behaviour of MAB trader where used sub-traders differ from other strategies used by other agents in the market.\\
 Finally, as MAB strategies show their full potential in long run experiments another study should be carried out with longer trading sessions.
 
